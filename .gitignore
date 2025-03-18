@@ -47,3 +47,9 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+#venv
+/justGreen
+
+# data 
+/data
