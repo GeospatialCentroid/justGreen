@@ -32,8 +32,8 @@ def process_aoi(aoi):
     # Add the maximum NDVI image as a property to the AOI feature.
     return aoi.set('maxNDVI', max_ndvi)
 
-# error 3 -- character in name 
-for index in range(5, 201):
+# error 3 120,130, 136, 176,200  -- character in name 
+for index in range(201, 201):
     # Access row data using row['column_name'] or row.geometry
     row = aois.loc[[index]]  # Replace index_value with the index of the row
     # geoid
