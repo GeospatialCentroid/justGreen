@@ -6,10 +6,14 @@ cities <- terra::vect("data/processed/top200/top200Cities.gpkg")
 # list all ndvi files 
 ndviFiles <- list.files("data/processed/ndvi",
                         full.names = TRUE) 
+# land 
+land <- terra::vect("data/processed/naturalEarthData/ne_10m_land.gpkg")
+lake1 <- terra::vect("data/processed/naturalEarthData/ne_10m_lakes_north_america.gpkg")
+lake2 <- terra::vect("data/processed/naturalEarthData/ne_10m_lakes.gpkg")
 
 # generate a dateframe with the average NDVI per citis 
 for(i in seq_along(cities)){
-  city <- cities[i]
+  city <- cities[i] |> terra::makeValid()
   name <- city$NAME
   id <- city$GEOID
   state <- city$State
@@ -20,7 +24,11 @@ for(i in seq_along(cities)){
   file <- ndviFiles[grepl(pattern = id, x = ndviFiles)] 
   if(length(file) > 0){
     ndvi <- file |> 
-      terra::rast()
+      terra::rast()|>
+      terra::mask(land) |>
+      terra::mask(lake1, inverse = TRUE)|>
+      terra::mask(lake2, inverse = TRUE)
+    
     # Calculate mean and standard deviation for each block group
     vals <- terra::values(ndvi) 
     mean <- mean(vals, na.rm = TRUE)
@@ -47,8 +55,8 @@ for(i in seq_along(cities)){
       dplyr::mutate(area = weight * 100) |> 
       group_by(ID) |>
       summarise(
-        mean_ndvi = mean(NDVI, na.rm = TRUE),
-        sd_ndvi = sd(NDVI, na.rm = TRUE),
+        mean_ndvi = mean(layer, na.rm = TRUE),
+        sd_ndvi = sd(layer, na.rm = TRUE),
         prop_area = sum(area)
       )
     # join back to census tracts 
@@ -68,4 +76,7 @@ for(i in seq_along(cities)){
   write.csv(df, paste0("data/processed/summaryNDVI/allCitiesNDVI.csv"))
   
 }
-i
+
+
+
+
