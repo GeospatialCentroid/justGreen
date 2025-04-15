@@ -13,7 +13,9 @@ lake1 <- terra::vect("data/processed/naturalEarthData/ne_10m_lakes_north_america
 lake2 <- terra::vect("data/processed/naturalEarthData/ne_10m_lakes.gpkg")
 
 # generate a dateframe with the average NDVI per citis 
-for(i in seq_along(cities)){
+# issue with city being in two states (137)
+for(i in 138:nrow(cities)){
+  print(i)
   city <- cities[i] |> terra::makeValid()
   name <- city$NAME
   print(name)

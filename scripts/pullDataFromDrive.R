@@ -4,7 +4,7 @@
 pacman::p_load(googledrive, fs)
 
 # 1. Authenticate with Google Drive
-drive_auth()
+# drive_auth()
 
 # 2. Specify the Google Drive folder ID or file name containing the TIFF files
 # Replace 'your_folder_id' or 'your_file_name' with the actual ID or name.

@@ -46,7 +46,7 @@ def remove_special_characters(text):
   return cleaned_text
 
 # error 3 120,130, 136, 176,200  -- character in name 
-for index in range(100,201):
+for index in range(100,100):
     # Access row data using row['column_name'] or row.geometry
     row = aois.loc[[index]]  # Replace index_value with the index of the row
     # geoid
