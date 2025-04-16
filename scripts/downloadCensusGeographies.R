@@ -68,7 +68,7 @@ for(i in seq_along(states)){
       dplyr::select(
         "GEOID","NAME","over18","geometry"
       ) |>
-      sf::st_transform(x = acs, crs = 4326)
+      sf::st_transform(crs = 4326)
     
     # project and export 
     sf::st_write(obj = acs2, exportPath)
