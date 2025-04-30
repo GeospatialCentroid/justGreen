@@ -18,7 +18,7 @@ ndvi_ct <- list.files("data/processed/summaryNDVI",
 # remove non buffered features 
 # noBuff <- ndvi_ct[!grepl(pattern = "_buffer", x = ndvi_ct)]
 # lapply(X = noBuff,FUN = file.remove)
-
+Test <- NA
 # parameters  -------------------------------------------------------------
 baseNDVI <- 0.1 
 doseResponse <- 0.146
