@@ -3,7 +3,7 @@ import ee
 import geopandas as gpd
 import time
 import re
-# ee.Authenticate(auth_mode='notebook')        
+# ee.Authenticate(auth_mode='notebook')       
 ee.Initialize(project='justgreen-450923')
 
 # read in geopandas object 
@@ -21,7 +21,7 @@ def calculate_ndvi(image):
 def process_aoi(aoi):
     """Processes each AOI to calculate maximum NDVI."""
     #buffer object 
-    bufferedAOI = aoi.geometry().buffer(1000)
+    bufferedAOI = aoi.geometry().buffer(10000)
 
 
     # Load Sentinel-2 surface reflectance data.
@@ -46,7 +46,7 @@ def remove_special_characters(text):
   return cleaned_text
 
 # error 3 120,130, 136, 176,200  -- character in name 
-for index in range(100,100):
+for index in range(0,199):
     # Access row data using row['column_name'] or row.geometry
     row = aois.loc[[index]]  # Replace index_value with the index of the row
     # geoid
@@ -56,7 +56,7 @@ for index in range(100,100):
     # convert to gee object 
     aoiGEE = geemap.gdf_to_ee(row)
     # buffer 
-    bufferedAOI = aoiGEE.geometry().buffer(1000)
+    bufferedAOI = aoiGEE.geometry().buffer(10000)
     # generate NDVI image 
     ndvi = process_aoi(aoi=aoiGEE)
     # pull the image 
@@ -67,7 +67,7 @@ for index in range(100,100):
     task1 = ee.batch.Export.image.toDrive(
         image = max_ndvi_image,
         folder= "Earth Engine",
-        description =  geoid + "_"+ name+ "_2020NDVI_buffered",
+        description =  geoid + "_"+ name+ "_2020NDVI_buffered10k",
         region=bufferedAOI,
         scale=10,
         maxPixels = 1e13

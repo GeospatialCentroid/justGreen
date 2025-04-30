@@ -36,6 +36,8 @@ crudeDeathPrevented <- function(population, mortalityRate, paf){
 # quick test --------------------------------------------------------------
 population <- 100000
 mortalityRate <- 792.2/100000
+### reference from paper 
+# .1 == 4% reduction 
 
 for(i in seq(0, 0.8, by =0.1)){
   print(i)
@@ -54,27 +56,54 @@ for(i in seq(0, 0.8, by =0.1)){
 
 
 # Test on specific city  --------------------------------------------------
-c1 <- city[1, ]
+selectedCity <- city[25, ]
+state <- selectedCity$State
+cityName <- selectedCity$NAME
 # grap the state level census data 
-ct1 <- pop_ct[grepl(pattern = c1$State, x = pop_ct)] |>
+stateCensusTracts <- pop_ct[grepl(pattern = state, x = pop_ct)] |>
   st_read()
-# census tracks that touch the city 
-ct2 <- st_crop(ct1, c1) 
-ct2$area <- st_area(ct2)|> round()
-# use geoid from crop to select all ct of interest 
-ct <- ct1[ct1$GEOID %in% ct2$GEOID, ]
-ct$area <- st_area(ct) |> round()
-# select all census tracts that are fully inside of the 
-ct_contained <- ct[ct$area == ct2$area,]
+# census tracks that touch the city boundary 
+touchingCT <- st_crop(stateCensusTracts, selectedCity) |>
+  as.data.frame() |>
+  dplyr::select(GEOID)|>
+  dplyr::pull()
+# ct of interest 
+## all cts intersecting with the city boundaries
+selCT <- stateCensusTracts[stateCensusTracts$GEOID %in% touchingCT,]
+selCT$area <- st_area(selCT) |> round() |> as.numeric()
+selCT$area50 <- round(selCT$area * 0.5) 
+selCT$area10 <- round(selCT$area * 0.1) 
+# census tracks masked to the city 
+### clip area of census tracts to the city bounaries 
+cityCTs <- st_intersection(selCT, selectedCity) 
+cityCTs$area <- st_area(cityCTs) |> round() |> as.numeric()
 
+# use the clip area to filter the select CT 
+selCT <- selCT[selCT$GEOID %in% cityCTs$GEOID, ]
+
+# select all census tracts that are fully inside of the 
+## same area between features -- 100% of census track inside city boundaries
+ct_contained <- cityCTs[cityCTs$area == selCT$area,]
+ct_contained50 <- cityCTs[cityCTs$area >= selCT$area50,]
+ct_contained10 <- cityCTs[cityCTs$area >= selCT$area10,]
 # going to be a little tricky working out the cut off of what's present in the city or not
-tm_shape(c1, name = "City")+
-  tm_polygons(col = "blue", alpha = 1)+
-  tm_shape(ct_contained, name = "Tract inside city")+
-  tm_polygons(col = "white",  alpha = 0.8)+
-  tm_shape(ct, name = "All nearby tracts")+
-  tm_polygons(alpha = 0.6)
-  
+tm_shape(selectedCity, name = "City")+
+  tm_polygons(col = "blue", alpha = 1, group = "city")+
+  # 10% contained 
+  tm_shape(ct_contained, name = "Tract 100% inside city")+
+  tm_polygons(col = "white",  alpha = 0.8, , group = "100% tracts")+
+  # 50% contained 
+  tm_shape(ct_contained50, name = "Tract > 50% inside city")+
+  tm_polygons(col = "white",  alpha = 0.8, , group = "50% tracts")+
+  # 10% contained 
+  tm_shape(ct_contained10, name = "Tract > 10% inside city")+
+  tm_polygons(col = "white",  alpha = 0.8, , group = "10% tracts")+
+  # all tracts considers 
+  tm_shape(selCT, name = "All nearby tracts")+
+  tm_polygons(alpha = 0.6, , group = "All Census Tracts")+
+  tm_layout(title = paste0("City of ", cityName))
+
+
 # read in the NDVI layer 
 ndvi <- ndvi_ct[grepl(c1$GEOID, ndvi_ct)] |> 
   st_read()
