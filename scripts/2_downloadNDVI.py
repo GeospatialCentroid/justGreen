@@ -27,7 +27,7 @@ def process_aoi(aoi):
     # Load Sentinel-2 surface reflectance data.
     sentinel2 = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED') \
         .filterBounds(aoi) \
-        .filterDate('2020-01-01', '2020-12-31') \
+        .filterDate('2019-01-01', '2021-12-31') \
         .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20)) \
         .map(calculate_ndvi)
 
@@ -46,7 +46,7 @@ def remove_special_characters(text):
   return cleaned_text
 
 # error 3 120,130, 136, 176,200  -- character in name 
-for index in range(0,199):
+for index in range(5,199):
     # Access row data using row['column_name'] or row.geometry
     row = aois.loc[[index]]  # Replace index_value with the index of the row
     # geoid
@@ -64,10 +64,11 @@ for index in range(0,199):
     print(name)
     time.sleep(5)
     # export 
+    ### something odd going on with the export process.. files are not writen to folder but are listed as duplicated folders of the same name ... 
     task1 = ee.batch.Export.image.toDrive(
         image = max_ndvi_image,
-        folder= "Earth Engine",
-        description =  geoid + "_"+ name+ "_2020NDVI_buffered10k",
+        # folder= "justGreenImages/",
+        description = geoid + "_"+ name+ "_2020NDVI_buffered10k",
         region=bufferedAOI,
         scale=10,
         maxPixels = 1e13

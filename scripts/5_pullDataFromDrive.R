@@ -9,13 +9,13 @@ pacman::p_load(googledrive, fs)
 # 2. Specify the Google Drive folder ID or file name containing the TIFF files
 # Replace 'your_folder_id' or 'your_file_name' with the actual ID or name.
 # It is best to use the folder ID.
-folder_id <- "Earth Engine" # Example: "1abc2def3ghi4jkl5mno6pqr"
+folder_id <- "1Jzcz4qiXelKfmOeyxXuMSgDeP77dAsCg" # Example: "1abc2def3ghi4jkl5mno6pqr"
 
 # 3. List the TIFF files in the specified folder
-files <- googledrive::drive_ls(path = "Earth Engine", recursive = TRUE)
+files <- googledrive::drive_ls(path = folder_id,recursive = TRUE)
 
 # filter to buffered features only 
-files <- files[grepl(pattern = "_buffered", x = files$name), ]
+files <- files[grepl(pattern = "_buffered10k", x = files$name), ]
 # 4. Specify the local directory where you want to download the files
 local_dir <- "data/processed/ndvi" # Replace with your local directory path
 # Create the directory if it doesn't exist
