@@ -7,6 +7,7 @@ tmap_mode("view")
 
 # inputs 
 allCities <- read_csv("data/processed/summaryNDVI/allCitiesNDVI.csv")
+cities <- sf::st_read("data/processed/top200/top200Cities.shp")
 # need the population measure too 
 
 # ndvi per census tract by city 

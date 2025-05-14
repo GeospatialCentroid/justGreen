@@ -12,8 +12,6 @@ source("scripts/summaryNDVIAllCities.R")
 
 
 
-
-
 # for(i in 1:nrow(cities)){
 #   print(i)
 #   city <- cities[i] |> terra::makeValid()
