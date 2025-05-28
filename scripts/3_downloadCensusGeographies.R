@@ -11,7 +11,7 @@ states <- sf::st_read("data/processed/top200/top200Cities.gpkg") |>
   unique()
 
 age_variables <- c(
-  "B01001_007E", # Male: 18 and 19 years
+  # "B01001_007E", # Male: 18 and 19 years
   "B01001_008E", # Male: 20 years
   "B01001_009E", # Male: 21 years
   "B01001_010E", # Male: 22 to 24 years
@@ -26,7 +26,7 @@ age_variables <- c(
   "B01001_019E", # Male: 65 to 74 years
   "B01001_020E", # Male: 75 to 84 years
   "B01001_021E", # Male: 85 years and over
-  "B01001_031E", # Female: 18 and 19 years
+  # "B01001_031E", # Female: 18 and 19 years
   "B01001_032E", # Female: 20 years
   "B01001_033E", # Female: 21 years
   "B01001_034E", # Female: 22 to 24 years
@@ -49,13 +49,15 @@ for(i in seq_along(states)){
   # state 
   s1 <- states[i]
   # export path 
+  print(s1)
+  print("census tracts")
   exportPath <- paste0("data/processed/censusGeographies/",s1,"_ct.gpkg")
   if(!file.exists(exportPath)){
     # pull acs 
     acs <- get_acs(
       geography = "tract",
       variables = age_variables, # Total Population (any variable works for geography)
-      year = 2020, # Or the desired year
+      year = 2023, # Or the desired year
       state = s1,
       geometry = TRUE,
       output = "wide" #output wide data for easier manipulation of the geometry.
@@ -72,6 +74,33 @@ for(i in seq_along(states)){
     
     # project and export 
     sf::st_write(obj = acs2, exportPath)
+  }
+  print("block groups")
+  
+  # export path 
+  exportPath2 <- paste0("data/processed/censusGeographies/",s1,"_bg.gpkg")
+  if(!file.exists(exportPath2)){
+    # pull acs 
+    acs <- get_acs(
+      geography = "block group",
+      variables = age_variables, # Total Population (any variable works for geography)
+      year = 2023, # Or the desired year
+      state = s1,
+      geometry = TRUE,
+      output = "wide" #output wide data for easier manipulation of the geometry.
+    )
+    # thin to over 18 pop 
+    acs2 <- acs |>
+      dplyr::mutate(
+        over18 = rowSums(across(age_variables))
+      )|>
+      dplyr::select(
+        "GEOID","NAME","over18","geometry"
+      ) |>
+      sf::st_transform(crs = 4326)
+    
+    # project and export 
+    sf::st_write(obj = acs2, exportPath2)
   }
 }
 

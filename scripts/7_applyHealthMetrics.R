@@ -3,19 +3,9 @@
 ### 
 
 pacman::p_load(dplyr,sf, tidyr, tmap, readr)
-tmap_mode("view")
 
-# inputs 
-allCities <- read_csv("data/processed/summaryNDVI/allCitiesNDVI.csv")
-cities <- sf::st_read("data/processed/top200/top200Cities.shp")
-# need the population measure too 
-
-# ndvi per census tract by city 
-ndvi_ct <- list.files("data/processed/summaryNDVI",
-                      pattern = ".csv",
-                      full.names = TRUE)
-test <- sf::st_read(ndvi_ct[2])
 # parameters  -------------------------------------------------------------
+# these are standard variables 
 baseNDVI <- 0.1 
 doseResponse <- 0.146
 relativeRisk <- 0.961 
@@ -29,23 +19,7 @@ crudeDeathPrevented <- function(population, mortalityRate, paf){
 }
 
 
-# quick test --------------------------------------------------------------
-population <- 100000
-mortalityRate <- 792.2/100000
-### reference from paper 
-# .1 == 4% reduction 
+# run on all cities  ------------------------------------------------------
+source("scripts/metricsToAllCities.R")
 
-for(i in seq(0, 0.8, by =0.1)){
-  print(i)
-  paf <- populationAttributableFraction(
-    ndviVal = i,
-    rr = relativeRisk,
-    doseResponse = doseResponse
-  )
-  deathPresented <- crudeDeathPrevented(
-    population = population,
-    mortalityRate = mortalityRate,
-    paf = paf
-  )
-  print(deathPresented)
-}
+# run on census tracts 
