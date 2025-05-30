@@ -32,7 +32,6 @@ downloadBlocks <- function(state){
 # apply download 
 # purrr::map(.x = states, .f = downloadBlocks)
 
-
 # determine the blocks inside of each city 
 blocks <- list.files(path = "data/raw/censusBlocks", 
                      full.names = TRUE)
@@ -100,10 +99,20 @@ blocksInCities <- function(state, blocks, cities){
     }
   }
 }
+
+# need to change the name of the "Louisville/Jefferson County metro government (balance)" -- remove "/" character
+
+
 # generate data 
-# purrr::map(.x = states, .f = blocksInCities,
-           # blocks = blocks,
-           # cities = cities)
+purrr::map(.x = states, .f = blocksInCities,
+  blocks = blocks,
+  cities = cities)
+# error checking 
+# for(i in states){
+#   blocksInCities(state = i, blocks = blocks, cities = cities)
+# }
+
+
 
 # produce a new total population per city 
 blocksInCity <- list.files(path = "data/processed/blocksInCity", 
@@ -125,7 +134,7 @@ generate2023cityPop <- function(state, cities, blocksInCity,blockGroups ){
     for(i in 1:nrow(c1)){
       city <- c1[i, ]
       # select blocks 
-      b1 <- blocks[grepl(pattern = paste0("blocksInCity/",city$NAME), blocks)] |> 
+      b1 <- blocks[grepl(pattern = paste0("blocksInCity/",city$NAME, "_",city$State), blocks)] |> 
         st_read() 
       # filter block groups 
       bg1 <- bg |>
@@ -150,6 +159,26 @@ purrr::map(.x = states, .f = generate2023cityPop,
            cities = cities,
            blocksInCity = blocksInCity,
            blockGroups = blockGroups)
+# # error testing 
+for(i in states){
+  generate2023cityPop(state = i,
+                      cities = cities,
+                      blocksInCity = blocksInCity,
+                      blockGroups = blockGroups)
+}
 
+# bind everything into a single file 
+files <- list.files("data/processed/top200_2023",
+                    full.names = TRUE)
 
-    
+readAndTrim <- function(file){
+  r1 <- st_read(file) |>
+    dplyr::select("OBJECTID", "GEOID","NAME","State","countyGEOID","popOver20_2023","geom")
+  return(r1)
+}
+
+results <- lapply(files, readAndTrim)
+# check to ensure the county value remained 
+results2 <- results |>
+  bind_rows()
+st_write(obj = results2, "data/processed/top200_2023/allCities.gpkg",delete_dsn = TRUE)

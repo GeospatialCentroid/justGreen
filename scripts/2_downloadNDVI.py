@@ -27,7 +27,7 @@ def process_aoi(aoi):
     # Load Sentinel-2 surface reflectance data.
     sentinel2 = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED') \
         .filterBounds(aoi) \
-        .filterDate('2019-01-01', '2021-12-31') \
+        .filterDate('2022-01-01', '2024-12-31') \
         .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20)) \
         .map(calculate_ndvi)
 
@@ -46,7 +46,8 @@ def remove_special_characters(text):
   return cleaned_text
 
 # error 3 120,130, 136, 176,200  -- character in name 
-for index in range(5,199):
+renamed = [120,136,176]
+for index in range(0,199):
     # Access row data using row['column_name'] or row.geometry
     row = aois.loc[[index]]  # Replace index_value with the index of the row
     # geoid
