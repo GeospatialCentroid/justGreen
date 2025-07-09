@@ -1,5 +1,5 @@
 # inputs 
-citiesNDVI <- read_csv("data/processed/summaryNDVI/allCitiesNDVI.csv")
+citiesNDVI <- read_csv("data/processed/summaryNDVI/allCitiesNDVI_2023.csv")
 citiesPop <- st_read("data/processed/top200_2023/allCities.gpkg")
 
 allCities <- dplyr::left_join(x = citiesNDVI, y = citiesPop, by = c("geoid" = "GEOID"))
@@ -15,13 +15,18 @@ countyMortality <-read_csv("data/raw/mortality/All Cause of Death 2023.csv") |>
   )|>
   dplyr::select(countyGEOID, mortalityRate)
 # assign mortalityRate 
-allCities2 <- dplyr::left_join(x = allCities, y = countyMortality, by = "countyGEOID")  
+allCities_c <- dplyr::left_join(x = allCities, y = countyMortality, by = "countyGEOID")  
 
 
 # add measures the cities data  -------------------------------------------
-allCities2 <- allCities2 |>
+allCities2 <- allCities_c |>
   dplyr::mutate(
+    ndviPlus10 = meanNDVI + 0.1*meanNDVI,
     paf = populationAttributableFraction(ndviVal = meanNDVI, 
+                                         rr = relativeRisk, 
+                                         baseNDVI = 0.1,
+                                         doseResponse = doseResponse),
+    pafPlus10 = populationAttributableFraction(ndviVal = ndviPlus10, 
                                          rr = relativeRisk, 
                                          baseNDVI = 0.1,
                                          doseResponse = doseResponse),
@@ -29,6 +34,12 @@ allCities2 <- allCities2 |>
       !is.na(mortalityRate) ~ crudeDeathPrevented(population = popOver20_2023,
                                      mortalityRate = mortalityRate,
                                      paf = paf),
+      is.na(mortalityRate) ~ NA
+    ),
+    livesSavedPlus10 = case_when(
+      !is.na(mortalityRate) ~ crudeDeathPrevented(population = popOver20_2023,
+                                                  mortalityRate = mortalityRate,
+                                                  paf = pafPlus10),
       is.na(mortalityRate) ~ NA
     )
   )|>

@@ -7,7 +7,8 @@ pacman::p_load(terra, dplyr, furrr, purrr, tictoc, readr)
 
 # read in masked NDVI files 
 ndvi <- list.files("data/processed/ndvi_noWater",
-                   full.names = TRUE)
+                   full.names = TRUE,
+                   pattern = "2023NDVI")
 # read in cenus tract paths 
 ct <- list.files("data/processed/censusGeographies",
                  full.names = TRUE)
@@ -19,15 +20,26 @@ splitting_factor <- 1:nrow(cities)
 # Use split to create the list of single-row SpatVectors
 cityList <- terra::split(cities, f = splitting_factor)
 
+# missing cities 
+cname <- cities$NAME
+missing <- c()
+for(i in cname){
+  vals <- grepl(pattern = i, x = ndvi)
+  if(!TRUE %in% vals){
+    missing <- c(missing, i)
+  }
+}
+
 
 gatherNDVI <- function(tract, ndvi, name, state){
   geoid = tract$GEOID
+  print(geoid)
   # buffer area by 500 m 
   c2 <- terra::buffer(x = tract, width = 500)
   # crop raster to city buffer 
-  r2 <- terra::mask(x = r1, mask = c2)
+  r2 <- terra::mask(x = ndvi, mask = c2)
   # summarize the data 
-  vals <- terra::values(r2)
+  vals <- terra::values(r2,na.rm = TRUE)
   mean <- mean(vals, na.rm = TRUE)
   sd <- sd(vals, na.rm = TRUE)
   # construct a data for results 
@@ -43,6 +55,9 @@ gatherNDVI <- function(tract, ndvi, name, state){
   gc()
 }
 
+city <- cityList[[4]]
+ndviFiles <- ndvi
+ctFiles <- ct
 
 processNDVItoTracks <- function(city, ndviFiles,ctFiles,overwrite ){
   # Get indexing values 
@@ -52,17 +67,17 @@ processNDVItoTracks <- function(city, ndviFiles,ctFiles,overwrite ){
   # pull ndvi value 
   f1 <- ndviFiles[grepl(pattern = geoid, x = ndviFiles)]
   # pull ct from stata 
-  ct1 <- ctFiles[grepl(pattern = state, x = ctFiles)]
+  ct <- ctFiles[grepl(pattern = state, x = ctFiles)]
+  ct1 <- ct[grepl(pattern = "ct", x = ct)]
   
   # export path 
   exportPath <- paste0("~/trueNAS/work/justGreen/data/processed/summaryNDVI/",
-                       geoid,"_",name,"_500mBuffer_CT_NDVI.csv")
+                       geoid,"_",name,"_500mBuffer_CT_2023NDVI.csv")
   #
   if(!file.exists(exportPath) | overwrite == TRUE){
     # condition for missing data 
-    if(length(f1)>0){
+    if(length(f1) > 0){
       r1 <- rast(f1)
-      
       # read in tracks 
       ct <- terra::vect(ct1)
       # crop to id all intersection tracks 
@@ -72,31 +87,37 @@ processNDVItoTracks <- function(city, ndviFiles,ctFiles,overwrite ){
         dplyr::pull()
       # select tracts 
       sel_ct <- ct[ct$GEOID %in% trackID, ]
-      # split in list 
+      # split in list
       range <- 1:nrow(sel_ct)
       ctList <- terra::split(sel_ct, f = range)
-      
-      # works with furrr but limiting parallization to the top level calls 
-      data <- furrr::future_map(.x = ctList, .f = gatherNDVI,
-                                ndvi = r1, 
-                                name = name, 
+      # 
+      # # works with furrr but limiting parallization to the top level calls 
+      data <- purrr::map(.x = ctList, .f = gatherNDVI,
+                                ndvi = r1,
+                                name = name,
                                 state = state)
-      # compile and export 
+      # compile and export
       d2 <- bind_rows(data)
       readr::write_csv(x = d2, file = exportPath)
     }
   }
-  
- 
 }
 
-plan(multicore, workers = 18) # works but have to run from terminal.
-# plan(sequential)
-## not a super long run time but fast with multicore! 
-tic()
-furrr::future_map(.x = cityList, .f = processNDVItoTracks,
-                      ndviFiles = ndvi,
-                      ctFiles = ct)
-toc()
+purrr::map(.x = cityList,
+           .f = processNDVItoTracks,
+           ndviFiles = ndvi,
+           ctFiles = ct,
+           overwrite = FALSE)
+
+
+# plan(multicore, workers = 4) # works but have to run from terminal.
+# # plan(sequential)
+# ## not a super long run time but fast with multicore! 
+# tic()
+# furrr::future_map(.x = cityList, .f = processNDVItoTracks,
+#                       ndviFiles = ndvi,
+#                       ctFiles = ct,
+#                   overwrite = TRUE)
+# toc()
 # 50 features sequential 9.5 sec
 # 50 features multicore 2.756 sec

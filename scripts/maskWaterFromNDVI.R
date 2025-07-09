@@ -5,7 +5,7 @@ pacman::p_load(terra, dplyr, furrr, purrr, tictoc)
 # list all ndvi files 
 ndviFiles <- list.files("data/processed/ndvi",
                         full.names = TRUE,
-                        pattern = "_buffered") 
+                        pattern = "2023NDVI")
 # land 
 land <- terra::vect("data/processed/naturalEarthData/ne_10m_land.gpkg")
 lake1 <- terra::vect("data/processed/naturalEarthData/ne_10m_lakes_north_america.gpkg")
@@ -22,8 +22,9 @@ lake2 <- terra::vect("data/processed/naturalEarthData/ne_10m_lakes.gpkg")
 processNDVIImages <- function(ndviFile, land, lake1, lake2){
   n1 <- basename(ndviFile)
   export <- paste0("data/processed/ndvi_noWater/", n1)
-  print(n1)
+  # print(n1)
   if(!file.exists(export)){
+    print(n1)
     r1 <- terra::rast(ndviFile)|>
       terra::mask(land) |>
       terra::mask(lake1, inverse = TRUE)|>
@@ -37,10 +38,21 @@ processNDVIImages <- function(ndviFile, land, lake1, lake2){
   gc()
 }
 
+# run in for loop for trouble shooting 
+for(i in ndviFiles){
+  # print(i)
+  processNDVIImages(ndviFile = i,
+                    land = land,
+                    lake1 = lake1,
+                    lake2 = lake2)
+}
+
+
+
 
 # plan("future::multisession", workers = 8) # this was erroring out 
-# plan(multicore, workers = 10) # works but have to run from terminal. 
-plan(sequential)
+plan(multicore, workers = 10) # works but have to run from terminal.
+# plan(sequential)
 ## not a super long run time but fast with multicore! 
 tic()
 future_map(.x = ndviFiles, .f = processNDVIImages,

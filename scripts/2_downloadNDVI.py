@@ -47,7 +47,7 @@ def remove_special_characters(text):
 
 # error 3 120,130, 136, 176,200  -- character in name 
 renamed = [120,136,176]
-for index in range(0,199):
+for index in range(199,200):
     # Access row data using row['column_name'] or row.geometry
     row = aois.loc[[index]]  # Replace index_value with the index of the row
     # geoid
@@ -69,7 +69,7 @@ for index in range(0,199):
     task1 = ee.batch.Export.image.toDrive(
         image = max_ndvi_image,
         # folder= "justGreenImages/",
-        description = geoid + "_"+ name+ "_2020NDVI_buffered10k",
+        description = geoid + "_"+ name+ "_2023NDVI_buffered10k",
         region=bufferedAOI,
         scale=10,
         maxPixels = 1e13

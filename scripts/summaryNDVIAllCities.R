@@ -4,14 +4,14 @@ pacman::p_load(terra, dplyr, furrr, purrr, tictoc, readr)
 
 # read in masked NDVI files 
 ndvi <- list.files("data/processed/ndvi_noWater",
-                   full.names = TRUE)
+                   full.names = TRUE,
+                   pattern = "2023NDVI")
 # read in city layer 
 cities <- terra::vect("data/processed/top200/top200Cities.gpkg")
 # traspose to a list 
 splitting_factor <- 1:nrow(cities)
 # Use split to create the list of single-row SpatVectors
 cityList <- terra::split(cities, f = splitting_factor)
-
 
 city <- cities[20]
 # ndviFiles <- ndvi
@@ -60,4 +60,4 @@ toc()
 
 # bind results and export 
 allData <- bind_rows(results)
-readr::write_csv(allData, "data/processed/summaryNDVI/allCitiesNDVI.csv")
+readr::write_csv(allData, "data/processed/summaryNDVI/allCitiesNDVI_2023.csv")

@@ -26,5 +26,5 @@ for( i in seq_along(files)){
     sf::st_make_valid()|>
     sf::st_crop(us)
   # export 
-  st_write(d1, paste0("data/processed/naturalEarthData/", name, ".gpkg"))
+  st_write(d1, paste0("data/processed/naturalEarthData/", name, ".gpkg"), delete_layer = TRUE)
 }
