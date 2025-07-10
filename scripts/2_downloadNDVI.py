@@ -9,10 +9,6 @@ ee.Initialize(project='justgreen-450923')
 # read in geopandas object 
 aois = gpd.read_file("/home/dune/trueNAS/work/justGreen/data/processed/top200/top200Cities.gpkg")
 
-
-
-
-
 def calculate_ndvi(image):
     """Calculates NDVI from a Sentinel-2 image."""
     ndvi = image.normalizedDifference(['B8', 'B4']).rename('NDVI')
@@ -45,6 +41,8 @@ def remove_special_characters(text):
   cleaned_text = re.sub(pattern, '', text)
   return cleaned_text
 
+
+### full feature run 
 # error 3 120,130, 136, 176,200  -- character in name 
 renamed = [120,136,176]
 for index in range(199,200):
@@ -75,3 +73,4 @@ for index in range(199,200):
         maxPixels = 1e13
     )
     task1.start()
+

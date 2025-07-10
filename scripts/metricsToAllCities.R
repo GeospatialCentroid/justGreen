@@ -4,6 +4,8 @@ citiesPop <- st_read("data/processed/top200_2023/allCities.gpkg")
 
 allCities <- dplyr::left_join(x = citiesNDVI, y = citiesPop, by = c("geoid" = "GEOID"))
 
+source("functions/healthFunctions.R")
+
 # Mortality -------------------------------------------------------------
 countyMortality <-read_csv("data/raw/mortality/All Cause of Death 2023.csv") |>
   dplyr::mutate(countyGEOID = as.character(`County Code`),

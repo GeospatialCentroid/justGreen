@@ -103,21 +103,27 @@ processNDVItoTracks <- function(city, ndviFiles,ctFiles,overwrite ){
   }
 }
 
-purrr::map(.x = cityList,
-           .f = processNDVItoTracks,
-           ndviFiles = ndvi,
-           ctFiles = ct,
-           overwrite = FALSE)
+# testing 
+# processNDVItoTracks(city = city, 
+#                     ndviFiles = ndvi,
+#                     ctFiles = ct,
+#                     overwrite = TRUE)
+# 
+# purrr::map(.x = cityList,
+#            .f = processNDVItoTracks,
+#            ndviFiles = ndvi,
+#            ctFiles = ct,
+#            overwrite = FALSE)
 
 
-# plan(multicore, workers = 4) # works but have to run from terminal.
+plan(multicore, workers = 4) # works but have to run from terminal.
 # # plan(sequential)
-# ## not a super long run time but fast with multicore! 
-# tic()
-# furrr::future_map(.x = cityList, .f = processNDVItoTracks,
-#                       ndviFiles = ndvi,
-#                       ctFiles = ct,
-#                   overwrite = TRUE)
-# toc()
+# ## not a super long run time but fast with multicore!
+tic()
+furrr::future_map(.x = cityList, .f = processNDVItoTracks,
+                      ndviFiles = ndvi,
+                      ctFiles = ct,
+                  overwrite = FALSE)
+toc()
 # 50 features sequential 9.5 sec
 # 50 features multicore 2.756 sec

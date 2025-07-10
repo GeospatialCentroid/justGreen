@@ -1,3 +1,10 @@
+
+
+
+source("functions/healthFunctions.R")
+
+
+
 # inputs 
 ctFiles <- list.files(path = "data/processed/summaryNDVI",
                       pattern = "_2023NDVI.csv",

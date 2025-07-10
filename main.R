@@ -34,7 +34,6 @@ print("grabbing data from google drive")
 # requires the authenitcation so can't run from terminal 
 try(source("scripts/5_pullDataFromDrive.R"))
 
-
 # calculate ndvi per city 
 # does a lot of processing through calling three independent scripts 
 ## process water from NDVI 
@@ -46,3 +45,5 @@ source("scripts/6_ndviPerCity.R")
 
 # apply the metric to the ndvi and population data 
 source("scripts/7_applyHealthMetrics.R")
+
+# move data to the shiny app 

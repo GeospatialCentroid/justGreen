@@ -1,4 +1,4 @@
-pacman::p_load(terra, dplyr, furrr, purrr, tictoc)
+pacman::p_load(terra, dplyr, furrr, purrr, tictoc,sf)
 
 
 
@@ -12,7 +12,17 @@ lake1 <- terra::vect("data/processed/naturalEarthData/ne_10m_lakes_north_america
 lake2 <- terra::vect("data/processed/naturalEarthData/ne_10m_lakes.gpkg")
 
 # generate a dateframe with the average NDVI per citis 
-# issue with city being in two states (137)
+# test for ndvi files missing 
+t200 <- st_read("data/processed/top200/top200Cities.gpkg")
+cNames <- t200$GEOID
+missing <- c()
+for(i in cNames){
+  t1 <- grepl(pattern = i, x = ndviFiles)
+  if(!TRUE %in% t1){
+    missing <- c(missing, i)
+  }
+}
+missingCities <- t200[t200$GEOID %in% missing, ]
 
 
 ## spliting this out to
@@ -39,13 +49,13 @@ processNDVIImages <- function(ndviFile, land, lake1, lake2){
 }
 
 # run in for loop for trouble shooting 
-for(i in ndviFiles){
-  # print(i)
-  processNDVIImages(ndviFile = i,
-                    land = land,
-                    lake1 = lake1,
-                    lake2 = lake2)
-}
+# for(i in ndviFiles){
+#   # print(i)
+#   processNDVIImages(ndviFile = i,
+#                     land = land,
+#                     lake1 = lake1,
+#                     lake2 = lake2)
+# }
 
 
 

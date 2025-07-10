@@ -46,7 +46,11 @@ processNDVI <- function(city, ndviFiles){
     return(df)
     gc()
     }
-  }
+}
+
+# testing 
+processNDVI(city = city, ndviFiles = ndvi)
+
 
 plan(multicore, workers = 10) # works but have to run from terminal.
 # plan(sequential)
@@ -61,3 +65,7 @@ toc()
 # bind results and export 
 allData <- bind_rows(results)
 readr::write_csv(allData, "data/processed/summaryNDVI/allCitiesNDVI_2023.csv")
+
+# t1 <- read_csv("data/processed/summaryNDVI/allCitiesNDVI_2023.csv")
+
+
