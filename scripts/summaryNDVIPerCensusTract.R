@@ -55,7 +55,7 @@ gatherNDVI <- function(tract, ndvi, name, state){
   gc()
 }
 
-city <- cityList[[4]]
+city <- cityList[[130]]
 ndviFiles <- ndvi
 ctFiles <- ct
 
@@ -64,11 +64,12 @@ processNDVItoTracks <- function(city, ndviFiles,ctFiles,overwrite ){
   name <- city$NAME
   geoid <- city$GEOID
   state <- city$State
+  print(name)
   # pull ndvi value 
   f1 <- ndviFiles[grepl(pattern = geoid, x = ndviFiles)]
   # pull ct from stata 
   ct <- ctFiles[grepl(pattern = state, x = ctFiles)]
-  ct1 <- ct[grepl(pattern = "ct", x = ct)]
+  ct1 <- sf::st_read(ct[grepl(pattern = "ct", x = ct)])
   
   # export path 
   exportPath <- paste0("~/trueNAS/work/justGreen/data/processed/summaryNDVI/",
@@ -104,26 +105,34 @@ processNDVItoTracks <- function(city, ndviFiles,ctFiles,overwrite ){
 }
 
 # testing 
+## issues with fort wayne, Indianapolis 
+for(i in cityList[120:200]){
+  processNDVItoTracks(city = i,
+                      ndviFiles=ndvi,
+                      ctFiles = ct,
+                      overwrite = FALSE
+                      )
+}
 # processNDVItoTracks(city = city, 
 #                     ndviFiles = ndvi,
-#                     ctFiles = ct,
-#                     overwrite = TRUE)
-# 
+# #                     ctFiles = ct,
+# #                     overwrite = TRUE)
+# # 
 # purrr::map(.x = cityList,
 #            .f = processNDVItoTracks,
 #            ndviFiles = ndvi,
 #            ctFiles = ct,
 #            overwrite = FALSE)
 
-
-plan(multicore, workers = 4) # works but have to run from terminal.
-# # plan(sequential)
-# ## not a super long run time but fast with multicore!
-tic()
-furrr::future_map(.x = cityList, .f = processNDVItoTracks,
-                      ndviFiles = ndvi,
-                      ctFiles = ct,
-                  overwrite = FALSE)
-toc()
+# 
+# plan(multicore, workers = 4) # works but have to run from terminal.
+# # # plan(sequential)
+# # ## not a super long run time but fast with multicore!
+# tic()
+# furrr::future_map(.x = cityList, .f = processNDVItoTracks,
+#                       ndviFiles = ndvi,
+#                       ctFiles = ct,
+#                   overwrite = FALSE)
+# toc()
 # 50 features sequential 9.5 sec
 # 50 features multicore 2.756 sec
