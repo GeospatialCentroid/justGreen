@@ -22,8 +22,24 @@ allCities_c <- dplyr::left_join(x = allCities, y = countyMortality, by = "county
 allCities_c$mortalityRate[allCities_c$state == "Puerto Rico"] <- 0.012828
 
 
+# Dementia ----------------------------------------------------------------
+demData <- read_csv("data/raw/dementia/Dementia_55.csv") |>
+  dplyr::select(state = location, 
+                DementiaRate = val)
+allCities_d <- dplyr::left_join(x = allCities_c, demData, by = "state")
+# Stroke ------------------------------------------------------------------
+strokeData <- read_csv("data/raw/stroke/Stroke Incidence 2021.csv")|>
+  dplyr::select(state = location, 
+                DementiaRate = val)
+allCities_s <- dplyr::left_join(x = allCities_d,strokeData, by = "state")
+
+
+
+
+
+
 # add measures the cities data  -------------------------------------------
-allCities2 <- allCities_c |>
+allCities2 <- allCities_s |>
   dplyr::mutate(
     # mortality
     rr_Mortality = relativeRate(ndviVal = meanNDVI, baseNDVI = 0.1, doseResponse = doseResponseMortality),

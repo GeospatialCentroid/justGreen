@@ -66,6 +66,6 @@ toc()
 allData <- bind_rows(results)
 readr::write_csv(allData, "data/processed/summaryNDVI/allCitiesNDVI_2023.csv")
 
-# t1 <- read_csv("data/processed/summaryNDVI/allCitiesNDVI_2023.csv")
+t1 <- read_csv("data/processed/summaryNDVI/allCitiesNDVI_2023.csv")
 
 

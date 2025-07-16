@@ -21,10 +21,14 @@ files <- list.files(
 for( i in seq_along(files)){
   # grab name for export 
   name <- basename(files[i]) |> tools::file_path_sans_ext()
-  # read in data 
-  d1 <- st_read(files[i]) |>
-    sf::st_make_valid()|>
-    sf::st_crop(us)
-  # export 
-  st_write(d1, paste0("data/processed/naturalEarthData/", name, ".gpkg"), delete_layer = TRUE)
+  # test for presence 
+  exportPath <- paste0("data/processed/naturalEarthData/", name, ".gpkg")
+  if(!file.exists(exportPath)){
+    # read in data 
+    d1 <- st_read(files[i]) |>
+      sf::st_make_valid()|>
+      sf::st_crop(us)
+    # export 
+    st_write(d1, exportPath, delete_layer = TRUE)
+  }
 }

@@ -13,7 +13,7 @@ places <- dplyr::bind_rows(d1, i1)|>
   top_n(200, P0010001) |>
   select("OBJECTID","PLACENS","GEOID","CLASSFP","NAME","State",
          "totalPopulation" = "P0150001",
-         "pop18andOlder" = "P0150003")
+         "pop18andOlder" = "P0150003") # where is this used? 
 # remove all "/" characters from city names 
 places$NAME <- stringr::str_replace(string = places$NAME, pattern = "/", replacement = "-")
 # remove all " (balance)" characters from city names as this is causing some odd issues with grepl indexing 
