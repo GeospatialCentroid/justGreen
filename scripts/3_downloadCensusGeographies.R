@@ -42,6 +42,41 @@ age_variables <- c(
   "B01001_044E", # Female: 75 to 84 years
   "B01001_045E"  # Female: 85 years and over
 )
+# 35 
+age_35 <- c(
+  "B01001_013E", # Male: 35 to 39 years
+  "B01001_014E", # Male: 40 to 44 years
+  "B01001_015E", # Male: 45 to 49 years
+  "B01001_016E", # Male: 50 to 54 years
+  "B01001_017E", # Male: 55 to 59 years
+  "B01001_018E", # Male: 60 to 64 years
+  "B01001_019E", # Male: 65 to 74 years
+  "B01001_020E", # Male: 75 to 84 years
+  "B01001_021E", # Male: 85 years and over
+  "B01001_037E", # Female: 35 to 39 years
+  "B01001_038E", # Female: 40 to 44 years
+  "B01001_039E", # Female: 45 to 49 years
+  "B01001_040E", # Female: 50 to 54 years
+  "B01001_041E", # Female: 55 to 59 years
+  "B01001_042E", # Female: 60 to 64 years
+  "B01001_043E", # Female: 65 to 74 years
+  "B01001_044E", # Female: 75 to 84 years
+  "B01001_045E"  # Female: 85 years and over
+)
+# 55 
+age_55 <- c(
+  "B01001_017E", # Male: 55 to 59 years
+  "B01001_018E", # Male: 60 to 64 years
+  "B01001_019E", # Male: 65 to 74 years
+  "B01001_020E", # Male: 75 to 84 years
+  "B01001_021E", # Male: 85 years and over
+  "B01001_041E", # Female: 55 to 59 years
+  "B01001_042E", # Female: 60 to 64 years
+  "B01001_043E", # Female: 65 to 74 years
+  "B01001_044E", # Female: 75 to 84 years
+  "B01001_045E"  # Female: 85 years and over
+)
+
 
 
 # iterate over each states and download ACS geomentries are  
@@ -65,10 +100,13 @@ for(i in seq_along(states)){
     # thin to over 18 pop 
     acs2 <- acs |>
       dplyr::mutate(
-        over18 = rowSums(across(age_variables))
+        over18 = rowSums(across(age_variables)),
+        over35 = rowSums(across(age_35)),
+        over55 = rowSums(across(age_55))
+        
       )|>
       dplyr::select(
-        "GEOID","NAME","over18","geometry"
+        "GEOID","NAME","over18","over35","over55","geometry"
       ) |>
       sf::st_transform(crs = 4326)
     

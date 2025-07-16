@@ -18,32 +18,43 @@ countyMortality <-read_csv("data/raw/mortality/All Cause of Death 2023.csv") |>
   dplyr::select(countyGEOID, mortalityRate)
 # assign mortalityRate 
 allCities_c <- dplyr::left_join(x = allCities, y = countyMortality, by = "countyGEOID")  
+# add in "Puerto Rico" mortality measure 
+allCities_c$mortalityRate[allCities_c$state == "Puerto Rico"] <- 0.012828
 
 
 # add measures the cities data  -------------------------------------------
 allCities2 <- allCities_c |>
   dplyr::mutate(
-    ndviPlus10 = meanNDVI + 0.1*meanNDVI,
-    paf = populationAttributableFraction(ndviVal = meanNDVI, 
-                                         rr = relativeRisk, 
-                                         baseNDVI = 0.1,
-                                         doseResponse = doseResponse),
-    pafPlus10 = populationAttributableFraction(ndviVal = ndviPlus10, 
-                                         rr = relativeRisk, 
-                                         baseNDVI = 0.1,
-                                         doseResponse = doseResponse),
-    livesSaved = case_when(
-      !is.na(mortalityRate) ~ crudeDeathPrevented(population = popOver20_2023,
-                                     mortalityRate = mortalityRate,
-                                     paf = paf),
-      is.na(mortalityRate) ~ NA
-    ),
-    livesSavedPlus10 = case_when(
-      !is.na(mortalityRate) ~ crudeDeathPrevented(population = popOver20_2023,
-                                                  mortalityRate = mortalityRate,
-                                                  paf = pafPlus10),
-      is.na(mortalityRate) ~ NA
-    )
+    # mortality
+    rr_Mortality = relativeRate(ndviVal = meanNDVI, baseNDVI = 0.1, doseResponse = doseResponseMortality),
+    rr_Mortality_low = relativeRate(ndviVal = meanNDVI, baseNDVI = 0.1, doseResponse = drfMortality_low),
+    rr_Mortality_high = relativeRate(ndviVal = meanNDVI, baseNDVI = 0.1, doseResponse = drfMortality_high),
+    paf_Mortality = populationAttributableFraction(rr_Mortality),
+    paf_Mortality_low = populationAttributableFraction(rr_Mortality_low),
+    paf_Mortality_high = populationAttributableFraction(rr_Mortality_high),
+    ls_Mortality = expectedIncidence(popOver20_2023, mortalityRate) |> livesSaved(paf_Mortality),
+    ls_Mortality_low = expectedIncidence(popOver20_2023, mortalityRate) |> livesSaved(paf_Mortality_low),
+    ls_Mortality_high = expectedIncidence(popOver20_2023, mortalityRate) |> livesSaved(paf_Mortality_high),
+    # stroke 
+    rr_Stroke = relativeRate(ndviVal = meanNDVI, baseNDVI = 0.1, doseResponse = doseResponseStroke),
+    rr_Stroke_low = relativeRate(ndviVal = meanNDVI, baseNDVI = 0.1, doseResponse = drfStroke_low),
+    rr_Stroke_high = relativeRate(ndviVal = meanNDVI, baseNDVI = 0.1, doseResponse = drfStroke_high),
+    paf_Stroke = populationAttributableFraction(rr_Stroke),
+    paf_Stroke_low = populationAttributableFraction(rr_Stroke_low),
+    paf_Stroke_high = populationAttributableFraction(rr_Stroke_high),
+    # ls_Stroke = expectedIncidence(popOver20_2023, StrokeRate) |> livesSaved(paf_Stroke),
+    # ls_Stroke_low = expectedIncidence(popOver20_2023, StrokeRate) |> livesSaved(paf_Stroke_low),
+    # ls_Stroke_high = expectedIncidence(popOver20_2023, StrokeRate) |> livesSaved(paf_Stroke_high),
+    # dementia 
+    rr_Dementia = relativeRate(ndviVal = meanNDVI, baseNDVI = 0.1, doseResponse = doseResponseDementia),
+    rr_Dementia_low = relativeRate(ndviVal = meanNDVI, baseNDVI = 0.1, doseResponse = drfDementia_low),
+    rr_Dementia_high = relativeRate(ndviVal = meanNDVI, baseNDVI = 0.1, doseResponse = drfDementia_high),
+    paf_Dementia = populationAttributableFraction(rr_Dementia),
+    paf_Dementia_low = populationAttributableFraction(rr_Dementia_low),
+    paf_Dementia_high = populationAttributableFraction(rr_Dementia_high),
+    # ls_Dementia = expectedIncidence(popOver20_2023, DementiaRate) |> livesSaved(paf_Dementia),
+    # ls_Dementia_low = expectedIncidence(popOver20_2023, DementiaRate) |> livesSaved(paf_Dementia_low),
+    # ls_Dementia_high = expectedIncidence(popOver20_2023, DementiaRate) |> livesSaved(paf_Dementia_high)
   )|>
   st_drop_geometry() |>
   dplyr::select(-geom)
