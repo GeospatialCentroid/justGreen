@@ -17,6 +17,10 @@ for(i in 1:nrow(citiesPop)){
   bg <- terra::vect(path) 
   # crop
   crop <- terra::crop(bg, c2)
+  
+  terra::plot(c2, col = "blue")
+  terra::plot(bg, add = TRUE)
+  
   # pop over 55
   pop55 <- sum(crop$over55, na.rm = TRUE)
   #assign val to city and export 
