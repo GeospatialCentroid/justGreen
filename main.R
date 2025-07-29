@@ -21,6 +21,8 @@ if(!file.exists("data/processed/top200/top200Cities.gpkg")){
 
 print("grabbing census data")
 source("scripts/3_downloadCensusGeographies.R")
+# generate city pop for 35 and 55 and older 
+source("scripts/3b_55plusinCities.R")
 
 # process water files 
 print("processing lakes and oceans")

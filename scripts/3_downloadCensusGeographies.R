@@ -101,13 +101,13 @@ for(i in seq_along(states)){
     # thin to over 18 pop 
     acs2 <- acs |>
       dplyr::mutate(
-        over18 = rowSums(across(age_variables)),
+        over20 = rowSums(across(age_variables)),
         over35 = rowSums(across(age_35)),
         over55 = rowSums(across(age_55))
         
       )|>
       dplyr::select(
-        "GEOID","NAME","over18","over35","over55","geometry"
+        "GEOID","NAME","over20","over35","over55","geometry"
       ) |>
       sf::st_transform(crs = 4326)
     
@@ -131,12 +131,12 @@ for(i in seq_along(states)){
     # thin to over 18 pop 
     acs2 <- acs |>
       dplyr::mutate(
-        over18 = rowSums(across(age_variables)),
+        over20 = rowSums(across(age_variables)),
         over35 = rowSums(across(age_35)),
         over55 = rowSums(across(age_55))
       )|>
       dplyr::select(
-        "GEOID","NAME","over18","over35","over55", "geometry"
+        "GEOID","NAME","over20","over35","over55", "geometry"
       ) |>
       sf::st_transform(crs = 4326)
     

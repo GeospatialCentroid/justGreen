@@ -1,13 +1,14 @@
 # inputs 
 citiesNDVI <- read_csv("data/processed/summaryNDVI/allCitiesNDVI_2023.csv")
-citiesPop <- st_read("data/processed/top200_2023/allCities.gpkg")
+citiesPop <- st_read("data/processed/top200_2023/allCities.gpkg") |>
+  dplyr::select(-popOver20_2023)
 
 allCities <- dplyr::left_join(x = citiesNDVI, y = citiesPop, by = c("geoid" = "GEOID")) |>
   dplyr::select(
     # city data layer 
     geoid, city, state, totalCells, meanNDVI, standardDevNDVI, 
     # county join 
-    countyGEOID, popOver20_2023,
+    countyGEOID,
     #geom 
     geom
   )
@@ -15,7 +16,7 @@ allCities <- dplyr::left_join(x = citiesNDVI, y = citiesPop, by = c("geoid" = "G
 source("functions/healthFunctions.R")
 
 # Mortality -------------------------------------------------------------
-countyMortality <-read_csv("data/raw/mortality/All Cause of Death 2023.csv") |>
+countyMortality <-read_csv("data/raw/mortality/All Cause of Death 2023.csv")|>
   dplyr::mutate(countyGEOID = as.character(`County Code`),
                 mortalityRate = as.numeric(`Crude Rate`)/100000)|>
   dplyr::mutate(countyGEOID = case_when(
@@ -45,10 +46,22 @@ strokeData <- read_csv("data/raw/stroke/Stroke Incidence 2021.csv")|>
 allCities_s <- dplyr::left_join(x = allCities_d,strokeData, by = "state")
 
 # add city pop for 55 + 
-pop55 <- st_read("data/processed/top200_2023/allCities_55plus.gpkg") |>
+pop3555 <- st_read("data/processed/top200_2023/allCities_35_55.gpkg") |>
   st_drop_geometry()|>
-  dplyr::select(geoid = GEOID,popOver55_2023)
-allCities_p <- dplyr::left_join(x = allCities_s, y = pop55, by = "geoid" )
+  dplyr::select(geoid = GEOID,popOver20_2023, popOver35_2023, popOver55_2023)
+allCities_p <- dplyr::left_join(x = allCities_s, y = pop3555, by = "geoid" ) |>
+  dplyr::select(
+    # reference 
+    "geoid","city","state","countyGEOID",
+    #NDVI 
+    "totalCells","meanNDVI","standardDevNDVI",   
+    # population 
+    "popOver20_2023", "popOver35_2023",  "popOver55_2023",
+    # rates 
+    "mortalityRate","DementiaRate","StrokeRate",
+    #geom 
+    "geom"            
+  )
 
 
 
@@ -73,7 +86,7 @@ drfDementia_high <- 0.98
 # add measures the cities data  -------------------------------------------
 allCities2 <- allCities_p |>
   dplyr::mutate(
-    # mortality
+    # mortality - uses pop over 20 
     rr_Mortality = relativeRateMortiality(ndviVal = meanNDVI, baseNDVI = baseNDVI, doseResponse = doseResponseMortality),
     rr_Mortality_low = relativeRateMortiality(ndviVal = meanNDVI, baseNDVI = baseNDVI, doseResponse = drfMortality_low),
     rr_Mortality_high = relativeRateMortiality(ndviVal = meanNDVI, baseNDVI = baseNDVI, doseResponse = drfMortality_high),
@@ -83,24 +96,45 @@ allCities2 <- allCities_p |>
     ls_Mortality = expectedIncidence(popOver20_2023, mortalityRate) |> livesSaved(paf_Mortality),
     ls_Mortality_low = expectedIncidence(popOver20_2023, mortalityRate) |> livesSaved(paf_Mortality_low),
     ls_Mortality_high = expectedIncidence(popOver20_2023, mortalityRate) |> livesSaved(paf_Mortality_high),
-    ls_Mortality10 = relativeRateMortiality10(ndviVal = meanNDVI, baseNDVI = baseNDVI, doseResponse = doseResponseMortality),
-    paf_Mortality10 = populationAttributableFraction(ls_Mortality10),
+    # 10% ndvi increase 
+    rr_Mortality10 = relativeRateMortiality10(ndviVal = meanNDVI, baseNDVI = baseNDVI, doseResponse = doseResponseMortality),
+    rr_Mortality_low10 = relativeRateMortiality10(ndviVal = meanNDVI, baseNDVI = baseNDVI, doseResponse = drfMortality_low),
+    rr_Mortality_high10 = relativeRateMortiality10(ndviVal = meanNDVI, baseNDVI = baseNDVI, doseResponse = drfMortality_high),
+    paf_Mortality10 = populationAttributableFraction(rr_Mortality10),
+    paf_Mortality_low10 = populationAttributableFraction(rr_Mortality_low10),
+    paf_Mortality_high10 = populationAttributableFraction(rr_Mortality_high10),
     ls_Mortality10 = expectedIncidence(popOver20_2023, mortalityRate) |> livesSaved(paf_Mortality10),
-    # stroke 
+    ls_Mortality_low10 = expectedIncidence(popOver20_2023, mortalityRate) |> livesSaved(paf_Mortality_low10),
+    ls_Mortality_high10 = expectedIncidence(popOver20_2023, mortalityRate) |> livesSaved(paf_Mortality_high10),
+    # change in mortality 
+    ls_Mortality_Change = ls_Mortality10 - ls_Mortality,
+    ls_Mortality_Change_low = ls_Mortality_low10 - ls_Mortality_low,
+    ls_Mortality_Change_high = ls_Mortality_high10 - ls_Mortality_high,
+    # stroke - uses pop over 35 
     rr_Stroke = relativeRateStrokeDem(ndviVal = meanNDVI, baseNDVI = baseNDVI, doseResponse = doseResponseStroke),
     rr_Stroke_low = relativeRateStrokeDem(ndviVal = meanNDVI, baseNDVI = baseNDVI, doseResponse = drfStroke_low),
     rr_Stroke_high = relativeRateStrokeDem(ndviVal = meanNDVI, baseNDVI = baseNDVI, doseResponse = drfStroke_high),
     paf_Stroke = populationAttributableFraction(rr_Stroke),
     paf_Stroke_low = populationAttributableFraction(rr_Stroke_low),
     paf_Stroke_high = populationAttributableFraction(rr_Stroke_high),
-    ls_Stroke = expectedIncidence(popOver55_2023, StrokeRate) |> livesSaved(paf_Stroke),
-    ls_Stroke_low = expectedIncidence(popOver55_2023, StrokeRate) |> livesSaved(paf_Stroke_low),
-    ls_Stroke_high = expectedIncidence(popOver55_2023, StrokeRate) |> livesSaved(paf_Stroke_high),
+    ls_Stroke = expectedIncidence(popOver35_2023, StrokeRate) |> livesSaved(paf_Stroke),
+    ls_Stroke_low = expectedIncidence(popOver35_2023, StrokeRate) |> livesSaved(paf_Stroke_low),
+    ls_Stroke_high = expectedIncidence(popOver35_2023, StrokeRate) |> livesSaved(paf_Stroke_high),
+    # 10% ndvi increase 
     rr_Stroke10 = relativeRateStrokeDem10(ndviVal = meanNDVI, baseNDVI = baseNDVI, doseResponse = doseResponseStroke),
+    rr_Stroke_low10 = relativeRateStrokeDem10(ndviVal = meanNDVI, baseNDVI = baseNDVI, doseResponse = drfStroke_low),
+    rr_Stroke_high10 = relativeRateStrokeDem10(ndviVal = meanNDVI, baseNDVI = baseNDVI, doseResponse = drfStroke_high),
     paf_Stroke10 = populationAttributableFraction(rr_Stroke10),
-    ls_Stroke10 = expectedIncidence(popOver55_2023, StrokeRate) |> livesSaved(paf_Stroke10),
-    
-    # dementia
+    paf_Stroke_low10 = populationAttributableFraction(rr_Stroke_low10),
+    paf_Stroke_high10 = populationAttributableFraction(rr_Stroke_high10),
+    ls_Stroke10 = expectedIncidence(popOver35_2023, StrokeRate) |> livesSaved(paf_Stroke10),
+    ls_Stroke_low10 = expectedIncidence(popOver35_2023, StrokeRate) |> livesSaved(paf_Stroke_low10),
+    ls_Stroke_high10 = expectedIncidence(popOver35_2023, StrokeRate) |> livesSaved(paf_Stroke_high10),
+    # lives saved change 
+    ls_Stroke_Change = ls_Stroke10- ls_Stroke,
+    ls_Stroke_Change_low = ls_Stroke_low10 - ls_Stroke_low,
+    ls_Stroke_Change_high = ls_Stroke_high10 - ls_Stroke_high10,
+    # dementia - uses pop over 55 
     rr_Dementia = relativeRateStrokeDem(ndviVal = meanNDVI, baseNDVI = baseNDVI, doseResponse = doseResponseDementia),
     rr_Dementia_low = relativeRateStrokeDem(ndviVal = meanNDVI, baseNDVI = baseNDVI, doseResponse = drfDementia_low),
     rr_Dementia_high = relativeRateStrokeDem(ndviVal = meanNDVI, baseNDVI = baseNDVI, doseResponse = drfDementia_high),
@@ -110,9 +144,20 @@ allCities2 <- allCities_p |>
     ls_Dementia = expectedIncidence(popOver55_2023, DementiaRate) |> livesSaved(paf_Dementia),
     ls_Dementia_low = expectedIncidence(popOver55_2023, DementiaRate) |> livesSaved(paf_Dementia_low),
     ls_Dementia_high = expectedIncidence(popOver55_2023, DementiaRate) |> livesSaved(paf_Dementia_high),
+    #10% NDVI increase 
     rr_Dementia10 = relativeRateStrokeDem10(ndviVal = meanNDVI, baseNDVI = baseNDVI, doseResponse = doseResponseDementia),
+    rr_Dementia_low10 = relativeRateStrokeDem(ndviVal = meanNDVI, baseNDVI = baseNDVI, doseResponse = drfDementia_low),
+    rr_Dementia_high10 = relativeRateStrokeDem(ndviVal = meanNDVI, baseNDVI = baseNDVI, doseResponse = drfDementia_high),
     paf_Dementia10 = populationAttributableFraction(rr_Dementia10),
+    paf_Dementia_low10 = populationAttributableFraction(rr_Dementia_low10),
+    paf_Dementia_high10 = populationAttributableFraction(rr_Dementia_high10),
     ls_Dementia10 = expectedIncidence(popOver55_2023, DementiaRate) |> livesSaved(paf_Dementia10),
+    ls_Dementia_low10 = expectedIncidence(popOver55_2023, DementiaRate) |> livesSaved(paf_Dementia_low),
+    ls_Dementia_high10 = expectedIncidence(popOver55_2023, DementiaRate) |> livesSaved(paf_Dementia_high),
+    # change in NDVI increase 
+    ls_Dementia_Change = ls_Dementia10 - ls_Dementia,
+    ls_Dementia_Change_low = ls_Dementia_low10 - ls_Dementia_low,
+    ls_Dementia_Change_high = ls_Dementia_high10 - ls_Dementia_high,
   )|>
   st_drop_geometry() |>
   dplyr::select(-geom)
@@ -125,4 +170,4 @@ percentOld <- allCities2 |>
 
 readr::write_csv(allCities2, "data/products/healthMeasures/allCities_2023_morDemStroke_with10percentAdjust.csv")
 #testing 
-df2 <- read_csv("data/products/healthMeasures/allCities_2023_morDemStroke.csv")
+# df2 <- read_csv("data/products/healthMeasures/allCities_2023_morDemStroke.csv")
