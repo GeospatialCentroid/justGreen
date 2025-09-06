@@ -1,5 +1,5 @@
-
-doseResponse <- doseResponseMortality
+# 
+# doseResponse <- doseResponseMortality
 # this function is the same for all indicies 
 relativeRateMortiality <- function(ndviVal, baseNDVI, doseResponse){
   ndviDiff <- ndviVal - baseNDVI 

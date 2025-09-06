@@ -1,7 +1,5 @@
-# calling the workflow 
-
-
-pacman::p_load(dplyr,terra,sf,tmap,purrr,furrr)
+# calling the workflow \
+pacman::p_load(dplyr,terra,sf,tmap,purrr,furrr, readr)
 
 
 # download population data 
@@ -47,5 +45,5 @@ source("scripts/6_ndviPerCity.R")
 
 # apply the metric to the ndvi and population data 
 source("scripts/7_applyHealthMetrics.R")
-
+# city export : "data/products/healthMeasures/allCities_2023_morDemStroke_with10percentAdjust.csv"
 # move data to the shiny app 
