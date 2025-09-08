@@ -209,3 +209,22 @@ allCT_2 <- ct |>
 
 # export the results 
 readr::write_csv(allCT_2, "data/products/healthMeasures/allCT_2023_morDemStroke_with10percentAdjust.csv")
+
+# add the social vulerability elements too the dataset 
+sli <- list.files("data/raw/socialVul",
+                  full.names = TRUE) |>
+  readr::read_csv() |> 
+  dplyr::mutate("geoid" = as.character(FIPS))|>
+  dplyr::mutate("geoid" = case_when(
+    nchar(geoid)== 10 ~ paste0("0",geoid),
+    nchar(geoid)== 11 ~ geoid
+  ))|>
+  dplyr::select(geoid,RPL_THEMES )
+  
+
+
+allCT_svi <- dplyr::left_join(allCT_2, sli, by = "geoid")
+# export 
+readr::write_csv(allCT_svi, "data/products/healthMeasures/allCT_2023_morDemStroke_with10percentAdjust_svi.csv")
+
+
