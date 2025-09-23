@@ -1,19 +1,16 @@
 ---
-title: "JustGreen Tool - Report"
-author: "JustGreen Tool - Colorado State University"
+title: JustGreen Tool Report 
 output:
   html_document:
       css: style.css
-date: "Report generated on `r Sys.Date()`"
 params:
   cityName: NA,
-  censusTractData : NA
-  cityData : NA 
+  state: NA 
 ---
 
 
 ```{r load_packages_functions, echo=FALSE, message=FALSE, warning=FALSE}
-pacman::p_load(leaflet, dplyr, readr)
+pacman::p_load(leaflet, dplyr, readr,sf, terra, plotly)
 sf_use_s2(FALSE)
 ### function for control number of character after the decimal place 
 sigfig <- function(vec, n=3){ 
@@ -22,50 +19,276 @@ sigfig <- function(vec, n=3){
 #          n         integer is the required sigfig  
 # output:  outvec    vector of numeric rounded to N sigfig
 formatC(signif(vec,digits=n), digits=n,format="fg", flag="#") 
-
 } 
-```
-
-
-```{r dataProcessing, echo=FALSE, message=FALSE, warning=FALSE}
-city <- "Birmingham city"
-ct <- read_csv("~/trueNAS/work/justGreen/data/products/healthMeasures/allCT_2023_morDemStroke_with10percentAdjust_svi.csv")
-city
+## source gauge chart from app repo - will need to transfer eventually 
+source("~/trueNAS/work/justGreenShiny/functions/gaugeChart.R")
 
 ```
 
-# JustGreen ToolReport 
+
+```{r set input parameters, echo=FALSE, message=FALSE, warning=FALSE}
+## all these features should be defined as input parameters before the rmd is called to better hand the path 
+city <- params$cityName
+state <-  params$state 
+cityHealth <-read_csv("~/trueNAS/work/justGreen/data/products/healthMeasures/allCities_2023_morDemStroke_with10percentAdjust.csv") 
+ctHealth <- read_csv("~/trueNAS/work/justGreen/data/products/healthMeasures/allCT_2023_morDemStroke_with10percentAdjust_svi.csv")
+totalPop <- read_csv("~/trueNAS/work/justGreen/data/processed/top200_2023/totalPopCities.csv")
+# files
+cityFiles <- list.files("~/trueNAS/work/justGreen/data/processed/top200_2023", 
+                        pattern = ".gpkg",
+                        full.names = TRUE)
+ctFiles <- list.files("~/trueNAS/work/justGreen/data/processed/censusGeographies", 
+                        pattern = "ct.gpkg",
+                        full.names = TRUE)
+
+```
+
+```{r filter datasets, echo=FALSE, message=FALSE, warning=FALSE}
+# pop data 
+tPop <- totalPop[totalPop$NAME == city, ] |> pull(totalPopulation)
+
+# filter health data to city 
+cH <- cityHealth[cityHealth$city == city, ]
+ctH <- ctHealth[ctHealth$city == city, ]
+# filter spatial data to state and city 
+## city level 
+cS <- terra::vect(cityFiles[grepl(pattern = state, x = cityFiles)])|>
+  terra::makeValid()
+cS <- cS[cS$NAME == city, ] 
+## census tract 
+ctS <- terra::vect(ctFiles[grepl(pattern = state, x = ctFiles)])|>
+  terra::makeValid()
+ctS <- ctS[ctS$GEOID %in% ctH$geoid, ] 
+ctS$geoid <- ctS$GEOID
+# join health data 
+ctS <- terra::merge(x = ctS, y = ctH, by = "geoid") 
+
+```
+
+
+
+```{r values for report , echo=FALSE, message=FALSE, warning=FALSE}
+# ndvi 
+cityNDVI <-round(cH$meanNDVI, 3)
+ndvi_sorted <- cityHealth |>
+  arrange(desc(meanNDVI)) |>                 # Sort by mpg descending
+  mutate(rank = row_number()) |>        # Create a column with the rank
+  # Calculate percentile based on rank and total rows (n())
+  mutate(percentile = (1 - (rank / n())) * 100) 
+rankNDVI <- ndvi_sorted[ndvi_sorted$city == city, ] |>
+  pull(percentile)
+# population 
+pop_sorted <- totalPop |>
+  arrange(desc(totalPopulation)) |>                 # Sort by mpg descending
+  mutate(rank = row_number()) |>        # Create a column with the rank
+  # Calculate percentile based on rank and total rows (n())
+  mutate(percentile = (1 - (rank / n())) * 100) 
+rankPop <- pop_sorted[pop_sorted$NAME == city, ] |>
+  pull(percentile)
+pop20 <- cH$popOver20_2023
+pop35 <- cH$popOver35_2023
+pop55 <- as.numeric(cH$popOver55_2023)
+
+# generate a table for visualization 
+popTable <- data.frame(
+  `total population` = tPop,
+  `p20` = pop20,
+  `p35` = pop35,
+  `p55` = pop55
+)
+
+# Apply formatting
+popTable_formated <- as.data.frame(
+  lapply(popTable, function(x) {
+    format(x, big.mark = ",", scientific = FALSE)
+  })
+)
+
+
+```
+
+
+
 ## Green Spaces and Health Impact 
-**Location:** [CITY NAME, STATE] 
-**Report Date:** [DATE] 
+**Location:**  `r paste0(city, ", ",state)`
+<br>
+**Report Date:** `r Sys.Date()` 
+
 
 ## Your Green Space Overview
-* **Current Vegetation Level (NDVI):** [0.XX] (Scale: 0.0-1.0, where 1.0 = maximum vegetation) 
-* **Ranking:** [XXth percentile] compared to similar US cities 
-* **Population:** [XXX,XXX] residents in your area 
+* **Current Vegetation Level (NDVI):** `r cityNDVI` (Scale: 0.0-1.0, where 1.0 = maximum vegetation) 
+* **NDVI Ranking:** `r paste0(rankNDVI,"th percentile")` compared to similar US cities 
+* **Population Ranking:** `r paste0(rankPop,"th percentile")` compared to the top 200 most populated US cities 
+
+```{r population table, echo=FALSE, message=FALSE, warning=FALSE}
+names(popTable_formated) <- c("Total Population", "Population Over 20", "Population Over 35", "Population Over 55")
+knitr::kable(popTable_formated)
+```
+
+
 
 ## How Your Area Compares
 [Interactive gauge chart showing current NDVI level vs. city average and national benchmarks]
 
+- made this figure "fat" as there is a lot of white space at the moment. Can adjust once we get some feed back on the figure in the shiny app as I'm current just using that function. 
+
+```{r gauge plot, echo=FALSE, message=FALSE, warning=FALSE}
+valueRange <- round(range(ndvi_sorted$meanNDVI), 2)
+current_pal <- RColorBrewer::brewer.pal( n = 8, name = "BuGn")
+
+
+gaugePlot(selectedRate = cityNDVI,
+          valueRange =valueRange ,
+          colorPalette = current_pal,
+          title = "NDVI against known range of top 200 Cities" ,
+          height = 400)
+```
+
+
 ## Health Benefits of Current Green Spaces 
 Based on scientific research, the current level of vegetation in your area provides these estimated annual health benefits: 
 
+```{r healthMetrics for city, echo=FALSE, message=FALSE, warning=FALSE}
+posRound <- function(value){
+  abs(round(value, 0))
+}
+
+# mortality rate 
+morRate <- posRound(cH$ls_Mortality)
+# stroke rate 
+strokeRate <- posRound(cH$ls_Stroke)
+# dementia rate 
+demRate <- posRound(cH$ls_Dementia)
+```
+
 ### Lives Protected 
-* **Premature Deaths Prevented:** [XX] deaths annually 
-* **Stroke Cases Prevented:** [X.X] cases annually
-* **Dementia Cases Prevented:** [X.X] cases annually 
+* **Premature Deaths Prevented:** `r morRate` deaths annually 
+* **Stroke Cases Prevented:** `r strokeRate` cases annually
+* **Dementia Cases Prevented:** `r demRate` cases annually 
 
 ## Potential for Improvement 
 ### Current vs. Target Scenarios 
 
-| Scenario | Vegetation Level (NDVI) | Additional Lives Saved | Additional Health Benefits |
-|---|---|---|---|
-| Current Level | [0.XX] | Baseline | Current benefits |
-| Moderate Increase (+10%) | [0.XX] | +[XX] lives/year | +[XX]% stroke prevention |
 
+```{r table for NDVI increase, echo=FALSE, message=FALSE, warning=FALSE}
+# table names 
+n1 <- c( "Scenario", "Vegetation Level (NDVI)", "Additional Lives Saved", "Additional Health Benefits - Stroke", "Additional Health Benefits - Dementia")
+# caculate 10% change over baseline 
+ndviChange <- cityNDVI - 0.1
+# add 10% increase 
+ndviDiff <- cityNDVI + (ndviChange*0.1)
+
+# mortality rate 
+morRate10 <- posRound(cH$ls_Mortality10)
+# stroke rate 
+strokeRate10 <- posRound(cH$ls_Stroke10)
+# dementia rate 
+demRate10 <- posRound(cH$ls_Dementia10)
+
+# generate a table for visualization 
+healthTable <- data.frame(
+  `Scenario` = c("Current Level", "Moderate Increase (+10%)"),
+  `Vegetation Level (NDVI)` = c(cityNDVI, ndviDiff),
+  `Additional Lives Saved` = c(morRate, morRate10),
+  `Additional Health Benefits - Stroke` = c(strokeRate, strokeRate10),
+  `Additional Health Benefits - Dementia` = c(demRate, demRate10)
+)
+
+# Apply formatting
+healthTable_formated <- as.data.frame(
+  lapply(healthTable, function(x) {
+    format(x, big.mark = ",", scientific = FALSE)
+  })
+)
+# plot the table 
+names(healthTable_formated) <- n1
+knitr::kable(healthTable_formated)
+```
 
 ## Where to Add Green Spaces 
 [Map showing priority areas for vegetation expansion based on population density and current vegetation gaps] 
+
+```{r leaflet map, echo=FALSE, message=FALSE, warning=FALSE}
+# show a map of a 
+## city boundaries - cS
+## filter the ctS data to remove all NA values in NDVI 
+ctFilter <- ctS[!is.na(ctS$meanNDVI), ]
+
+## census tracts visualized with NDVI values - ctS 
+pal <- colorNumeric(
+  palette = "BuGn",
+  domain = ctFilter$meanNDVI
+)
+
+# Create labels for the popups that appear when a tract is clicked
+popup_labels <- paste(
+  "<strong>Tract ID:</strong>", ctFilter$geoid, "<br/>",
+  "<strong>NDVI:</strong>", round(ctFilter$meanNDVI,2) , "<br/>",
+  "<strong>Population over 20:</strong>", round(ctFilter$over20,0) , "<br/>",
+  "<strong>Population over 20:</strong>", posRound(ctFilter$ls_Mortality) , "<br/>"
+) %>%
+  lapply(htmltools::HTML)
+
+# Build the Leaflet map
+map <- leaflet() %>%
+  # Add a base map layer (we're using OpenStreetMap)
+  addProviderTiles(providers$CartoDB.Positron, group = "CartoDB") %>%
+  addProviderTiles(providers$OpenStreetMap.Mapnik, group = "OSM") %>%
+  # Add the census tracts, colored by population
+  addPolygons(
+    data = ctFilter, 
+    fillColor = ~pal(meanNDVI),
+    weight = 1,
+    opacity = 1,
+    color = "white",
+    dashArray = "3",
+    fillOpacity = 0.7,
+    highlightOptions = highlightOptions(
+      weight = 3,
+      color = "#666",
+      dashArray = "",
+      fillOpacity = 0.7,
+      bringToFront = TRUE
+    ),
+    label = popup_labels,
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto"
+    ),
+    group = "Census Tracts"
+  )|>
+    # Add the Chicago city outline as a blue polygon
+  addPolygons(
+    data = cS,
+    fill = FALSE,         # No fill for the boundary itself
+    color = "#007BFF",    # A distinct blue color for the outline
+    weight = 3,           # Make the line thicker
+    opacity = 0.6,
+    smoothFactor = 0.5,
+    group = "City Outline"
+  ) |>
+  # Add a legend to explain the color scale
+  addLegend(
+    pal = pal,
+    values = ctFilter$meanNDVI,
+    opacity = 0.7,
+    title = "NDVI by Tract",
+    position = "bottomright"
+  ) %>%
+  # Add layer controls to toggle views
+  addLayersControl(
+    baseGroups = c( "CartoDB","OSM"),
+    overlayGroups = c("City Outline", "Census Tracts"),
+    options = layersControlOptions(collapsed = FALSE)
+  )
+
+map
+```
+
+
+
+
 
 ## Environmental Justice Considerations 
 ### Green Space Access by Demographics 
@@ -96,6 +319,8 @@ Based on scientific research, the current level of vegetation in your area provi
 3.  **Climate Resilience:** Use vegetation to address urban heat island effects 
 
 ---
+
+
 ## Data Sources & Methodology 
 This report uses satellite-derived vegetation data (NDVI), U.S. Census demographics, and peer-reviewed health impact models from environmental epidemiology research. Health estimates are based on established exposure-response relationships from longitudinal cohort studies across multiple cities. 
 
@@ -104,4 +329,4 @@ This report uses satellite-derived vegetation data (NDVI), U.S. Census demograph
 * **Geographic Resolution:** Census tract level for SVI analysis, block group level for vegetation data 
 
 ---
-Report generated by [JustGreen Tool - Colorado State University]. For questions or technical details, contact: david.rojas@colostate.edu 
+Report generated by [JustGreen Tool - Colorado State University](https://geocentroid.shinyapps.io/JustGreen/). For questions or technical details, contact: david.rojas@colostate.edu 

@@ -14,6 +14,12 @@ places <- dplyr::bind_rows(d1, i1)|>
   select("OBJECTID","PLACENS","GEOID","CLASSFP","NAME","State",
          "totalPopulation" = "P0150001",
          "pop18andOlder" = "P0150003") # where is this used? 
+
+# export data for total pop 
+placesExport <- places |>
+  as.data.frame()|>
+  dplyr::select( GEOID,NAME,State, totalPopulation)
+write_csv(placesExport, file = "data/processed/top200_2023/totalPopCities.csv")
 # remove all "/" characters from city names 
 places$NAME <- stringr::str_replace(string = places$NAME, pattern = "/", replacement = "-")
 # remove all " (balance)" characters from city names as this is causing some odd issues with grepl indexing 

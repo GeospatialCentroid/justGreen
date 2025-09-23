@@ -5,6 +5,7 @@ relativeRateMortiality <- function(ndviVal, baseNDVI, doseResponse){
   ndviDiff <- ndviVal - baseNDVI 
   rr <- exp(log(doseResponse) * (ndviDiff/0.1))
 }
+## need to check this DAVID as I think it's wrong as written 
 relativeRateMortiality10 <- function(ndviVal, baseNDVI, doseResponse){
   ndviDiff <- ndviVal - baseNDVI
   # add 10% increase 
