@@ -6,10 +6,9 @@ relativeRateMortiality <- function(ndviVal, baseNDVI, doseResponse){
   rr <- exp(log(doseResponse) * (ndviDiff/0.1))
 }
 ## need to check this DAVID as I think it's wrong as written 
-relativeRateMortiality10 <- function(ndviVal, baseNDVI, doseResponse){
-  ndviDiff <- ndviVal - baseNDVI
+relativeRateMortiality10 <- function(ndviVal, doseResponse){
   # add 10% increase 
-  ndviDiff <- ndviDiff + (ndviDiff*0.1)
+  ndviDiff <- ndviVal + (ndviVal*0.1)
   rr <- exp(log(doseResponse) * (ndviDiff/0.1))
 }
 
@@ -18,10 +17,9 @@ relativeRateStrokeDem<- function(ndviVal, baseNDVI, doseResponse){
   ndviDiff <- ndviVal - baseNDVI 
   rr <- exp(log(doseResponse) * (ndviDiff/0.12))
 }
-relativeRateStrokeDem10<- function(ndviVal, baseNDVI, doseResponse){
-  ndviDiff <- ndviVal - baseNDVI 
+relativeRateStrokeDem10<- function(ndviVal,  doseResponse){
   # add 10% increase 
-  ndviDiff <- ndviDiff + (ndviDiff*0.1)
+  ndviDiff <- ndviVal + (ndviVal*0.1)
   rr <- exp(log(doseResponse) * (ndviDiff/0.12))
 }
 
