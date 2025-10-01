@@ -15,7 +15,7 @@ pacman::p_load(googledrive, fs)
 files <- googledrive::drive_ls(path = "2023NDVI")
 
 # filter to buffered features only 
-files <- files[grepl(pattern = "2023NDVI", x = files$name), ]
+files <- files[grepl(pattern = "buffered10k_2.tif", x = files$name), ]
 # 4. Specify the local directory where you want to download the files
 local_dir <- "data/processed/ndvi" # Replace with your local directory path
 # Create the directory if it doesn't exist
@@ -24,6 +24,7 @@ dir_create(local_dir, recurse = TRUE)
 # 5. Download each TIFF file to the local directory
 if (nrow(files) > 0) {
   for (i in 1:nrow(files)) {
+    print(i)
     file_id <- files$id[i]
     file_name <- files$name[i]
     local_file_path <- file.path(local_dir, file_name)

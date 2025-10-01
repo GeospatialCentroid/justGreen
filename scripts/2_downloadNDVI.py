@@ -1,13 +1,24 @@
 import geemap
 import ee
 import geopandas as gpd
+import numpy
 import time
 import re
 # ee.Authenticate(auth_mode='notebook')       
 ee.Initialize(project='justgreen-450923')
 
 # read in geopandas object 
-aois = gpd.read_file("/home/dune/trueNAS/work/justGreen/data/processed/top200/top200Cities.gpkg")
+aois = gpd.read_file("data/processed/top200/top200Cities.gpkg")
+
+
+# features to rerun 
+errors = [ 33,  56,  58,  59,  63,  64,  70,  72,  78,  79,  80,  81,  82,  86,  87,  88,  89,  93,  94,  95,  96,  99, 102,
+103, 104, 105, 106, 108, 110, 111, 113, 115, 117, 118, 120, 123, 124, 125, 127, 128, 129, 132, 133, 134, 137, 138,
+140, 143, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 166, 167, 168, 169, 171, 174, 175, 176, 177, 179, 180,
+181, 182, 184, 186, 187, 189, 190, 191, 192, 193, 199, 200]
+reduced_vector = [x - 1 for x in errors]
+# filter aoi
+selected_gdf = aois.iloc[reduced_vector]
 
 def calculate_ndvi(image):
     """Calculates NDVI from a Sentinel-2 image."""
@@ -45,13 +56,16 @@ def remove_special_characters(text):
 ### full feature run 
 # error 3 120,130, 136, 176,200  -- character in name 
 renamed = [120,136,176]
-for index in range(199,200):
+# for index in range(199,200):
+for index in reduced_vector:
+    print(index)
     # Access row data using row['column_name'] or row.geometry
     row = aois.loc[[index]]  # Replace index_value with the index of the row
     # geoid
     geoid = row.loc[index, 'GEOID']
     # name 
     name = remove_special_characters(row.loc[index, 'NAME'])
+    print(name)
     # convert to gee object 
     aoiGEE = geemap.gdf_to_ee(row)
     # buffer 
@@ -60,14 +74,14 @@ for index in range(199,200):
     ndvi = process_aoi(aoi=aoiGEE)
     # pull the image 
     max_ndvi_image = ee.Image(ndvi.get('maxNDVI'))
-    print(name)
+    # print(name)
     time.sleep(5)
     # export 
     ### something odd going on with the export process.. files are not writen to folder but are listed as duplicated folders of the same name ... 
     task1 = ee.batch.Export.image.toDrive(
         image = max_ndvi_image,
         # folder= "justGreenImages/",
-        description = geoid + "_"+ name+ "_2023NDVI_buffered10k",
+        description = geoid + "_"+ name+ "_2023NDVI_buffered10k_2",
         region=bufferedAOI,
         scale=10,
         maxPixels = 1e13

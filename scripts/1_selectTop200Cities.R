@@ -13,17 +13,28 @@ places <- dplyr::bind_rows(d1, i1)|>
   top_n(200, P0010001) |>
   select("OBJECTID","PLACENS","GEOID","CLASSFP","NAME","State",
          "totalPopulation" = "P0150001",
-         "pop18andOlder" = "P0150003") # where is this used? 
+         "pop18andOlder" = "P0150003") |>
+  sf::st_make_valid()
+placesTemp <- dplyr::bind_rows(d1, i1)|>
+  top_n(200, P0010001) |>
+  select("OBJECTID","PLACENS","GEOID","CLASSFP","NAME","State",
+         "totalPopulation" = "P0150001",
+         "pop18andOlder" = "P0150003") 
+
+sf::st_write(placesTemp, "data/processed/top200/top200CitiesTemp.gpkg", delete_layer = TRUE)
+
+fc <- places[places$NAME == "Fort Collins city",]
+
 
 # export data for total pop 
 placesExport <- places |>
   as.data.frame()|>
-  dplyr::select( GEOID,NAME,State, totalPopulation)
+  dplyr::select( GEOID,NAME,State, totalPopulation) 
 write_csv(placesExport, file = "data/processed/top200_2023/totalPopCities.csv")
 # remove all "/" characters from city names 
 places$NAME <- stringr::str_replace(string = places$NAME, pattern = "/", replacement = "-")
 # remove all " (balance)" characters from city names as this is causing some odd issues with grepl indexing 
-places$NAME <- stringr::str_replace(string = places$NAME, pattern = fixed(" (balance)"), replacement = "")
+places$NAME <- stringr::str_replace(string = places$NAME, pattern = stringr::fixed(" (balance)"), replacement = "")
 
 # attribute counties to the cities 
 countiesExport <- "data/raw/counties/counties.gpkg"
@@ -75,4 +86,4 @@ places$countyGEOID <- geoid
 sf::st_write(places, "data/processed/top200/top200Cities.gpkg", delete_layer = TRUE)
 sf::st_write(places, "data/processed/top200/top200Cities.shp", delete_layer = TRUE)
 write_csv(x = st_drop_geometry(places), "data/processed/top200/top200Cities.csv")
-sf::st_write(places, "data/processed/top200/top200Cities.gpkg", delete_layer = TRUE)
+terra::writeVector(terra::vect(places), "data/processed/top200/top200Cities_vect.gpkg", overwrite = TRUE)

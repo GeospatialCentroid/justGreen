@@ -124,3 +124,23 @@ pre {
   border: 1px solid #ddd;
 }
 
+/* Styling for the landing page header */
+#app_title {
+  background-color: #f0ede6; /* This is a light beige/off-white color from your image */
+  border-left: 5px solid #a6a388; /* This is the gold/green vertical line */
+  padding: 10px 15px; /* Adjust padding as needed for spacing around the text */
+  margin: 0; /* Remove default margins if they interfere */
+  display: inline-block; /* Allows padding and border to wrap text correctly */
+  color: #3f5d3a; /* Assuming your text color is a dark green */
+  font-family: 'Montserrat', sans-serif; /* Or your preferred font */
+  font-size: 24px; /* Adjust font size as needed */
+  border-radius: 3px; /* Slightly rounded corners, if desired */
+}
+
+/* You might need to adjust the header's own padding/margin if it's wrapping the title */
+.main-header .logo {
+  padding: 0; /* Example adjustment */
+}
+.main-header .navbar {
+  margin-left: 0; /* Example adjustment */
+}

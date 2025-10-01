@@ -63,6 +63,11 @@ ctS$geoid <- ctS$GEOID
 # join health data 
 ctS <- terra::merge(x = ctS, y = ctH, by = "geoid") 
 
+# crop the ct to the 
+crop_ct <- terra::crop(ctS, cS)
+# select the census tracts 
+ct_select <- ctS[ctS$GEOID %in% crop_ct$GEOID,]
+
 ```
 
 
@@ -212,7 +217,7 @@ knitr::kable(healthTable_formated)
 # show a map of a 
 ## city boundaries - cS
 ## filter the ctS data to remove all NA values in NDVI 
-ctFilter <- ctS[!is.na(ctS$meanNDVI), ]
+ctFilter <- ct_select[!is.na(ct_select$meanNDVI), ]
 
 ## census tracts visualized with NDVI values - ctS 
 pal <- colorNumeric(
@@ -225,7 +230,7 @@ popup_labels <- paste(
   "<strong>Tract ID:</strong>", ctFilter$geoid, "<br/>",
   "<strong>NDVI:</strong>", round(ctFilter$meanNDVI,2) , "<br/>",
   "<strong>Population over 20:</strong>", round(ctFilter$over20,0) , "<br/>",
-  "<strong>Population over 20:</strong>", posRound(ctFilter$ls_Mortality) , "<br/>"
+  "<strong>Lives Saved per 100,000:</strong>", posRound(ctFilter$ls_Mortality) , "<br/>"
 ) %>%
   lapply(htmltools::HTML)
 
@@ -286,21 +291,159 @@ map <- leaflet() %>%
 map
 ```
 
-
-
-
-
 ## Environmental Justice Considerations 
 ### Green Space Access by Demographics 
 
-| Population Group 22] | Average NDVI Access 22] | Health Disparity Gap 22] |
-|---|---|---|
-| SVI quintile 1  | [0.XX]  | [X] premature health 25] |
-| SVI quintile 2  | [0.XX]  | [X] premature health 28] |
-| SVI quintile 3  | [0.XX]  | [X] premature health 31] |
-| SVI quintile 4  | [0.XX]  | ☑ [X] premature health 35] |
 
+```{r svi data, echo=FALSE, message=FALSE, warning=FALSE}
+ct_data <- as.data.frame(ct_select)
+quartile_breaks <- quantile(ct_data$RPL_THEMES)
+ct_data$quantile <- ntile(ct_data$RPL_THEMES, 4)
+ct_data$qNDVI <- ntile(ct_data$meanNDVI, 4)
+# function for flipping values 
+absRound <- function(val){
+  round(abs(val), 2)
+}
+
+# average of all tracts 
+ndvi1 = mean(ct_data$meanNDVI, na.rm=TRUE)
+mortality1 = absRound(mean(ct_data$ls_Mortality, na.rm = TRUE))
+dementia1 = absRound(mean(ct_data$ls_Dementia, na.rm = TRUE))
+stroke1 = absRound(mean(ct_data$ls_Stroke, na.rm = TRUE))
+pop1 = absRound(mean(ct_data$over20, na.rm = TRUE))
+sviScore = absRound(mean(ct_data$RPL_THEMES, na.rm = TRUE))
+
+# summarize the nvdi and healt metrics per quantile groups 
+c2 <- ct_data |>
+  dplyr::group_by(quantile)|>
+  dplyr::summarise(
+    svi = mean(RPL_THEMES, na.rm=TRUE),
+    ndvi = mean(meanNDVI, na.rm=TRUE),
+    populationOver20 = mean(over20, na.rm=TRUE),
+    mortality = absRound(mean(ls_Mortality, na.rm = TRUE)),
+    dementia = absRound(mean(ls_Dementia, na.rm = TRUE)),
+    stroke = absRound(mean(ls_Stroke, na.rm = TRUE))
+  )
+
+tableData <- c2[c(1,4), c("quantile","svi", "ndvi", "populationOver20" ,"mortality")]
+tableData$quantile <- c("Lowest SVI Scores", "Highest SVI Scores")
+
+# plot the table 
+names(tableData) <- c("SVI Rank", "Average SVI Score", "Greenness Measures", 
+                      "Average Population Over 20", "Average Lives Saved")
+knitr::kable(tableData)
+```
 **Priority for Equity:** Areas with the greatest health needs and lowest green space access should be prioritized for vegetation interventions. 
+
+```{r svi map, echo=FALSE, message=FALSE, warning=FALSE}
+## census tracts visualized with NDVI values - ctS 
+pal <- colorNumeric(
+  palette = "YlGnBu",
+  domain = ct_select$RPL_THEMES
+)
+
+## select that census tracts in the 4 quintile for SVI 
+q4 <- ct_data |>
+  dplyr::filter(quantile == 4) |>
+  dplyr::select(geoid) |>
+  pull()
+q4Tracts <- ct_select[ct_select$geoid %in% q4, ]
+
+
+## select that census tracts in the for NDVI 
+q4n <- ct_data |>
+  dplyr::filter(qNDVI  == 1) |>
+  dplyr::select(geoid) |>
+  pull()
+q4Tractsn <- ct_select[ct_select$geoid %in% q4n, ] |>
+  terra::centroids(inside=TRUE)
+
+# Create labels for the popups that appear when a tract is clicked
+popup_labels <- paste(
+  "<strong>Tract ID:</strong>", ct_select$geoid, "<br/>",
+  "<strong>NDVI:</strong>", round(ct_select$meanNDVI,2) , "<br/>",
+  "<strong>Population over 20:</strong>", round(ct_select$over20,0) , "<br/>",
+  "<strong>SVI Score:</strong>", ct_select$RPL_THEMES , "<br/>"
+) %>%
+  lapply(htmltools::HTML)
+
+# Build the Leaflet map
+map <- leaflet() %>%
+  # Add a base map layer (we're using OpenStreetMap)
+  addProviderTiles(providers$CartoDB.Positron, group = "CartoDB") %>%
+  addProviderTiles(providers$OpenStreetMap.Mapnik, group = "OSM") %>%
+  addProviderTiles(providers$Esri.WorldImagery, group = "Imagery") %>%
+  # Add the census tracts, colored by population
+  addPolygons(
+    data = ct_select, 
+    fillColor = ~pal(RPL_THEMES),
+    weight = 1,
+    opacity = 1,
+    color = "white",
+    dashArray = "3",
+    fillOpacity = 0.7,
+    highlightOptions = highlightOptions(
+      weight = 3,
+      color = "#666",
+      dashArray = "",
+      fillOpacity = 0.7,
+      bringToFront = TRUE
+    ),
+    label = popup_labels,
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto"
+    ),
+    group = "Census Tracts"
+  )|>
+    # Add the Chicago city outline as a blue polygon
+  addPolygons(
+    data = cS,
+    fill = FALSE,         # No fill for the boundary itself
+    color = "#007BFF",    # A distinct blue color for the outline
+    weight = 3,           # Make the line thicker
+    opacity = 0.6,
+    smoothFactor = 0.5,
+    group = "City Outline"
+  ) |>
+    addPolygons(
+    data = q4Tracts,
+    fill = FALSE,         # No fill for the boundary itself
+    color = "#feb24c",    # A distinct blue color for the outline
+    weight = 3,           # Make the line thicker
+    opacity = 0.6,
+    smoothFactor = 0.5,
+    group = "Highest SVI"
+  ) |>
+    addCircleMarkers(
+    data = q4Tractsn,
+    fill = FALSE,         # No fill for the boundary itself
+    color = "#dd1c77",    # A distinct blue color for the outline
+    weight = 2,           # Make the line thicker
+    opacity = 1,
+    radius = 1.2, 
+    group = "Lowest Greenness"
+  ) |>
+  # Add a legend to explain the color scale
+  addLegend(
+    pal = pal,
+    values = ct_select$RPL_THEMES,
+    opacity = 0.7,
+    title = "SVI by Tract",
+    position = "bottomright"
+  ) %>%
+  # Add layer controls to toggle views
+  addLayersControl(
+    baseGroups = c( "CartoDB","OSM", "Imagery"),
+    overlayGroups = c("City Outline", "Census Tracts","Highest SVI","Lowest Greenness"),
+    options = layersControlOptions(collapsed = FALSE)
+  )
+
+map
+
+```
+
 
 ## Policy Recommendations 
 ### For Community Leaders 

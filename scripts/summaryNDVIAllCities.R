@@ -6,6 +6,11 @@ pacman::p_load(terra, dplyr, furrr, purrr, tictoc, readr)
 ndvi <- list.files("data/processed/ndvi_noWater",
                    full.names = TRUE,
                    pattern = "2023NDVI")
+# altering this for the second run of files 
+ndvi <- list.files("data/processed/ndvi_noWater",
+                        full.names = TRUE,
+                        pattern = "buffered10k_2.tif")
+
 # read in city layer 
 cities <- terra::vect("data/processed/top200/top200Cities.gpkg")
 # traspose to a list 
@@ -13,7 +18,7 @@ splitting_factor <- 1:nrow(cities)
 # Use split to create the list of single-row SpatVectors
 cityList <- terra::split(cities, f = splitting_factor)
 
-city <- cities[20]
+city <- cities[79]
 # ndviFiles <- ndvi
 processNDVI <- function(city, ndviFiles){
   # Get indexing values 

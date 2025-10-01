@@ -13,6 +13,7 @@ if(!file.exists(export1)){
     read_csv()|>
     dplyr::mutate(geoid = as.character(geoid))
   
+  
   ctFiles$countyGEOID <- stringr::str_sub(string = ctFiles$geoid, start = 1, end = 5)
   # population data 
   ctPop <- list.files(path = "data/processed/censusGeographies",

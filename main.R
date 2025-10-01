@@ -14,7 +14,6 @@ if(!file.exists("data/processed/top200/top200Cities.gpkg")){
 
 # download NDVI 
 ## python method 
-
 # download census geographies 
 
 print("grabbing census data")

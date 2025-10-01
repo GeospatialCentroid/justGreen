@@ -6,6 +6,12 @@ pacman::p_load(terra, dplyr, furrr, purrr, tictoc,sf)
 ndviFiles <- list.files("data/processed/ndvi",
                         full.names = TRUE,
                         pattern = "2023NDVI")
+# altering this for the second run of files 
+ndviFiles <- list.files("data/processed/ndvi",
+                        full.names = TRUE,
+                        pattern = "buffered10k_2.tif")
+
+
 # land 
 land <- terra::vect("data/processed/naturalEarthData/ne_10m_land.gpkg")
 lake1 <- terra::vect("data/processed/naturalEarthData/ne_10m_lakes_north_america.gpkg")
