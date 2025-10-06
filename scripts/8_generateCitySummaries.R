@@ -6,7 +6,7 @@ cityHealth <-read_csv("~/trueNAS/work/justGreen/data/products/healthMeasures/all
 
 overwrite <- TRUE
 # 3. Call the render() function to create the report
-for(i in 19:nrow(cityHealth)){
+for(i in 33:nrow(cityHealth)){
   # error with "Bridgeport city" 18, "Washington city" 32, "Augusta-Richmond County consolidated government",
   # ?? "Fort Wayne city" "Indianapolis city",
   # "Louisville-Jefferson County metro government","Nashville-Davidson metropolitan government"

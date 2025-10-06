@@ -19,7 +19,7 @@ if(!file.exists("data/processed/top200/top200Cities.gpkg")){
 print("grabbing census data")
 source("scripts/3_downloadCensusGeographies.R")
 # generate city pop for 35 and 55 and older 
-source("scripts/3b_55plusinCities.R")
+source("scripts/3b_55plusInCities.R")
 
 # process water files 
 print("processing lakes and oceans")
@@ -43,6 +43,6 @@ source("scripts/6_ndviPerCity.R")
 
 
 # apply the metric to the ndvi and population data 
-source("scripts/7_applyHealthMetrics.R")
+# source("scripts/7_applyHealthMetrics.R")
 # city export : "data/products/healthMeasures/allCities_2023_morDemStroke_with10percentAdjust.csv"
 # move data to the shiny app 
