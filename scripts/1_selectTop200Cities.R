@@ -1,89 +1,103 @@
+# libraries
+pacman::p_load(sf, readr, dplyr, tigris, stringr, terra)
 
+pacman::p_load(sf, readr, dplyr, tigris, stringr, terra)
 
-pacman::p_load(sf, readr, dplyr, tigris)
+# 1. Read in all .gpkg files from the directory and bind them
+files <- list.files(
+  path = "data/raw/esri",
+  pattern = ".gpkg$", # Use '$' to match the end
+  full.names = TRUE
+)
 
-# read in places data 
-files <- list.files(path = "data/raw/esri",
-                    pattern = ".gpkg",
-                    full.names = TRUE)
-d1 <- sf::st_read(files[1])
-i1 <- sf::st_read(files[2])
-# bind to single features 
-places <- dplyr::bind_rows(d1, i1)|>
+# Use lapply to read all files into a list, then bind
+places_raw <- lapply(files, sf::st_read) |>
+  dplyr::bind_rows()
+
+# 2. Process places data once
+places_processed <- places_raw |>
   top_n(200, P0010001) |>
-  select("OBJECTID","PLACENS","GEOID","CLASSFP","NAME","State",
-         "totalPopulation" = "P0150001",
-         "pop18andOlder" = "P0150003") |>
-  sf::st_make_valid()
-placesTemp <- dplyr::bind_rows(d1, i1)|>
-  top_n(200, P0010001) |>
-  select("OBJECTID","PLACENS","GEOID","CLASSFP","NAME","State",
-         "totalPopulation" = "P0150001",
-         "pop18andOlder" = "P0150003") 
+  select(
+    "OBJECTID",
+    "PLACENS",
+    "GEOID",
+    "CLASSFP",
+    "NAME",
+    "State",
+    "totalPopulation" = "P0150001",
+    "pop18andOlder" = "P0150003"
+  )
 
-sf::st_write(placesTemp, "data/processed/top200/top200CitiesTemp.gpkg", delete_layer = TRUE)
+# 3. Write the "Temp" version before st_make_valid() and name cleaning
+sf::st_write(
+  places_processed,
+  "data/processed/top200/top200CitiesTemp.gpkg",
+  delete_layer = TRUE
+)
 
-fc <- places[places$NAME == "Fort Collins city",]
+# 4. Clean names and geometry
+places <- places_processed |>
+  sf::st_make_valid() |>
+  mutate(
+    # Clean names in one step
+    NAME = stringr::str_replace(NAME, "/", "-"),
+    NAME = stringr::str_replace(NAME, stringr::fixed(" (balance)"), "")
+  )
 
+# 5. Export total population CSV (using cleaned names)
+places |>
+  st_drop_geometry() |>
+  select(GEOID, NAME, State, totalPopulation) |>
+  write_csv("data/processed/top200_2023/totalPopCities.csv")
 
-# export data for total pop 
-placesExport <- places |>
-  as.data.frame()|>
-  dplyr::select( GEOID,NAME,State, totalPopulation) 
-write_csv(placesExport, file = "data/processed/top200_2023/totalPopCities.csv")
-# remove all "/" characters from city names 
-places$NAME <- stringr::str_replace(string = places$NAME, pattern = "/", replacement = "-")
-# remove all " (balance)" characters from city names as this is causing some odd issues with grepl indexing 
-places$NAME <- stringr::str_replace(string = places$NAME, pattern = stringr::fixed(" (balance)"), replacement = "")
-
-# attribute counties to the cities 
+# 6. Load/Cache Counties
 countiesExport <- "data/raw/counties/counties.gpkg"
-if(!file.exists(countiesExport)){
-  counties <- tigris::counties()|>
-    st_transform(crs = st_crs(places))
+if (!file.exists(countiesExport)) {
+  counties <- tigris::counties() |>
+    st_transform(crs = st_crs(places)) # Ensure CRS match
+
   st_write(obj = counties, dsn = countiesExport)
-}else{
+} else {
   counties <- st_read(countiesExport)
 }
-place <- places[80,]
-assignCounty <- function(place, counties){
-  state <- stringr::str_sub(place$GEOID, start = 1, end = 2)
-  #filter counties 
-  c1 <- counties[counties$STATEFP == state, ]
-  # issues with boarder connections 
-  # crop then intersect - 
-  p1 <- sf::st_crop(c1, place) 
-  if(nrow(p1)== 1){
-    geoid <- p1$GEOID
-  }else{
-    qtm(p1)
-    print(p1$NAME)
-    # run an intersection 
-    p1 <- st_intersection(p1, st_make_valid(place))
-    p1$area <- st_area(p1)
-    p1 <- p1[p1$area == max(p1$area),]
-    geoid <- p1$GEOID
-  }
-  return(geoid)
-}
-for(i in 1:nrow(places)){
-  print(i)
-  val <- assignCounty(place = places[i,], counties = counties)
-  if( i == 1){
-    geoid <- val
-  }else{
-    geoid <- c(geoid,val)
-  }
-}
-# assign count GEOID 
-places$countyGEOID <- geoid
+# select the names of interset
+counties <- counties |>
+  dplyr::select(
+    GEOID,
+    NAME,
+    NAMELSAD
+  )
 
-# need to filter to total pop 18 and older 
-# P0150002 - pop under 18 
-# P0150003 -  Population in households 18 years and over
 
-# export 
-sf::st_write(places, "data/processed/top200/top200Cities.gpkg", delete_layer = TRUE)
-sf::st_write(places, "data/processed/top200/top200Cities.shp", delete_layer = TRUE)
-write_csv(x = st_drop_geometry(places), "data/processed/top200/top200Cities.csv")
-terra::writeVector(terra::vect(places), "data/processed/top200/top200Cities_vect.gpkg", overwrite = TRUE)
+# 7. Assign Counties using a Spatial Join
+## adding conditional to
+if (!file.exists("data/processed/top200/top200Cities.gpkg")) {
+  places_with_county <- places |>
+    sf::st_join(
+      counties |> select(countyGEOID = GEOID), # Only select the column we want
+      largest = TRUE # Assigns based on largest overlap
+    )
+  # 8. Final Exports
+  sf::st_write(
+    places_with_county,
+    "data/processed/top200/top200Cities.gpkg",
+    delete_layer = TRUE
+  )
+
+  sf::st_write(
+    places_with_county,
+    "data/processed/top200/top200Cities.shp",
+    delete_layer = TRUE
+  )
+
+  write_csv(
+    x = st_drop_geometry(places_with_county),
+    "data/processed/top200/top200Cities.csv"
+  )
+
+  terra::writeVector(
+    terra::vect(places_with_county),
+    "data/processed/top200/top200Cities_vect.gpkg",
+    overwrite = TRUE
+  )
+}

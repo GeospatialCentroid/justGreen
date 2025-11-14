@@ -1,8 +1,8 @@
 ###
 # developing the workflow for review before functionalizing the process
-### 
+###
 
-pacman::p_load(dplyr,sf, tidyr, tmap, readr)
+pacman::p_load(dplyr, sf, tidyr, tmap, readr)
 
 # run on all cities  ------------------------------------------------------
 print("city metrics")
