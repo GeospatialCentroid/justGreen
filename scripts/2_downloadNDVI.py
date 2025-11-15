@@ -4,8 +4,8 @@ import geopandas as gpd
 import numpy
 import time
 import re
-# ee.Authenticate(auth_mode='notebook')       
-ee.Initialize(project='justgreen-450923')
+ee.Authenticate(auth_mode='notebook')       
+ee.Initialize(project= "justgreen-450923" )
 
 # read in geopandas object 
 aois = gpd.read_file("data/processed/top200/top200Cities.gpkg")
@@ -16,6 +16,12 @@ errors = [ 33,  56,  58,  59,  63,  64,  70,  72,  78,  79,  80,  81,  82,  86, 
 103, 104, 105, 106, 108, 110, 111, 113, 115, 117, 118, 120, 123, 124, 125, 127, 128, 129, 132, 133, 134, 137, 138,
 140, 143, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 166, 167, 168, 169, 171, 174, 175, 176, 177, 179, 180,
 181, 182, 184, 186, 187, 189, 190, 191, 192, 193, 199, 200]
+# NA NDVI values for a census tract 
+errors = [
+9, 12,  41,  60,  70,  77, 117, 126, 139, 141, 142, 153, 171, 182,
+]
+
+
 reduced_vector = [x - 1 for x in errors]
 # filter aoi
 selected_gdf = aois.iloc[reduced_vector]

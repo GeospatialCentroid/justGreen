@@ -11,6 +11,8 @@ print("prepping top 200 cities")
 if (!file.exists("data/processed/top200/top200Cities.gpkg")) {
   source("scripts/1_selectTop200Cities.R")
 }
+# this dataset is all good to go, complete re
+## gives up city name, state, county GEOID, and total population of city
 
 # download NDVI
 ## python method
@@ -20,6 +22,8 @@ print("grabbing census data")
 source("scripts/3_downloadCensusGeographies.R")
 # generate city pop for 35 and 55 and older
 source("scripts/3b_55plusInCities.R")
+
+#
 
 # process water files
 print("processing lakes and oceans")

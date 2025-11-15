@@ -72,21 +72,23 @@ counties <- counties |>
 # 7. Assign Counties using a Spatial Join
 ## adding conditional to
 if (!file.exists("data/processed/top200/top200Cities.gpkg")) {
+  # get the centroid of all cities
+  place_points <- sf::st_point_on_surface(places)
+  # join the points to county object
+  point_county_join <- sf::st_join(
+    place_points |> select(GEOID),
+    counties |> select(countyGEOID = GEOID)
+  )
+  #drop geom to join back to places
+  lookup_table <- sf::st_drop_geometry(point_county_join)
+  # join back
   places_with_county <- places |>
-    sf::st_join(
-      counties |> select(countyGEOID = GEOID), # Only select the column we want
-      largest = TRUE # Assigns based on largest overlap
-    )
+    dplyr::left_join(lookup_table, by = "GEOID")
+
   # 8. Final Exports
   sf::st_write(
     places_with_county,
     "data/processed/top200/top200Cities.gpkg",
-    delete_layer = TRUE
-  )
-
-  sf::st_write(
-    places_with_county,
-    "data/processed/top200/top200Cities.shp",
     delete_layer = TRUE
   )
 
