@@ -126,8 +126,10 @@ readr::write_csv(
 )
 
 # eval
-t1 <- read_csv("data/processed/summaryNDVI/allCensusTractsNDVI_2023.csv")
+t1 <- readr::read_csv("data/processed/summaryNDVI/allCensusTractsNDVI_2023.csv")
 # where were the errors
+## not quite errors, just locations that are being removed from the water mask
+
 t2 <- t1[is.na(t1$standardDevNDVI), ]
 
 ## cities to rerender ndvi values

@@ -1,15 +1,31 @@
-pacman::p_load(terra, dplyr, furrr, purrr, tictoc,sf)
+pacman::p_load(terra, dplyr, furrr, purrr, tictoc,sf,stringr)
 
 
 
 # list all ndvi files 
-ndviFiles <- list.files("data/processed/ndvi",
+ndviFiles1 <- list.files("data/processed/ndvi",
                         full.names = TRUE,
-                        pattern = "2023NDVI")
+                        pattern = "buffered10k.tif")
 # altering this for the second run of files 
-ndviFiles <- list.files("data/processed/ndvi",
+ndviFiles2 <- list.files("data/processed/ndvi",
                         full.names = TRUE,
                         pattern = "buffered10k_2.tif")
+
+# drop the _2 from path names to get list of features to drop from group 1
+all_bgs_to_drop_from_ndvi1 <- gsub("_2\\.tif$", ".tif", ndviFiles2)
+# filter ndvi1
+ndvi1_to_keep <- ndviFiles1[!(ndviFiles1 %in% all_bgs_to_drop_from_ndvi1)]
+# bind the groups
+ndvi <- c(ndviFiles2, ndvi1_to_keep)
+# remove the duplicated values
+# (?<=noWater/) is a "lookbehind" that finds the text but doesn't include it
+# \\d+ matches one or more digits
+geoids <- str_extract(ndvi, "(?<=ndvi/)\\d+")
+# elvaluate the duplicate dvalue
+dup <- ndvi[duplicated(geoids)]
+# exclude
+ndvi <- ndvi[!duplicated(geoids)]
+
 
 
 # land 
@@ -23,7 +39,7 @@ t200 <- st_read("data/processed/top200/top200Cities.gpkg")
 cNames <- t200$GEOID
 missing <- c()
 for(i in cNames){
-  t1 <- grepl(pattern = i, x = ndviFiles)
+  t1 <- grepl(pattern = i, x = ndvi)
   if(!TRUE %in% t1){
     missing <- c(missing, i)
   }
@@ -39,7 +55,7 @@ processNDVIImages <- function(ndviFile, land, lake1, lake2){
   n1 <- basename(ndviFile)
   export <- paste0("data/processed/ndvi_noWater/", n1)
   # print(n1)
-  if(!file.exists(export)){
+  # if(!file.exists(export)){
     print(n1)
     r1 <- terra::rast(ndviFile)|>
       terra::mask(land) |>
@@ -50,7 +66,7 @@ processNDVIImages <- function(ndviFile, land, lake1, lake2){
     #   rast = r1
     # ))
     terra::writeRaster(x= r1, filename = export, overwrite = TRUE)
-  }
+  # }
   gc()
 }
 
@@ -71,7 +87,7 @@ plan(multicore, workers = 10) # works but have to run from terminal.
 # plan(sequential)
 ## not a super long run time but fast with multicore! 
 tic()
-future_map(.x = ndviFiles, .f = processNDVIImages,
+future_map(.x = ndvi, .f = processNDVIImages,
            land=land,
            lake1 = lake1,
            lake2 = lake2)
