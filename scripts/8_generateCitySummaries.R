@@ -7,16 +7,16 @@ cityHealth <- read_csv(
 )
 
 # test
-i <- grep(pattern = "Atlanta", cityHealth$city)
+i <- grep(pattern = "Louisville city", cityHealth$city)
 
 
 overwrite <- TRUE
 # 3. Call the render() function to create the report
-for (i in 121:nrow(cityHealth)) {
+for (i in 177:nrow(cityHealth)) {
   # error with "Bridgeport city" 18, "Washington city" 32, "Augusta-Richmond County consolidated government",
   # ?? "Fort Wayne city" "Indianapolis city",
   # "Louisville-Jefferson County metro government","Nashville-Davidson metropolitan government"
-  #
+  # these are all based on variablity in the city name between features 
   target_city_name <- cityHealth$city[i]
 
   export <- paste0(

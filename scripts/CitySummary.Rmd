@@ -28,7 +28,7 @@ source("~/trueNAS/work/justGreenShiny/functions/gaugeChart.R")
 ```{r set input parameters, echo=FALSE, message=FALSE, warning=FALSE}
 ## all these features should be defined as input parameters before the rmd is called to better hand the path 
 
-test <- TRUE 
+test <- FALSE 
 if(isTRUE(test)){
   city <- cityName
   # state 
@@ -52,12 +52,18 @@ ctFiles <- list.files("~/trueNAS/work/justGreen/data/processed/censusGeographies
 
 ```{r filter datasets, echo=FALSE, message=FALSE, warning=FALSE}
 
-if(city %in% c("Augusta-Richmond County consolidated government")){
+if(city %in% c("Augusta-Richmond County consolidated government", "Indianapolis city","Nashville-Davidson metropolitan government")){
   index <- grep(pattern = city, x = totalPop$NAME)
   tPop <- totalPop[index, ] |> pull(totalPopulation)
 }else{
   tPop <- totalPop[totalPop$NAME %in% city, ] |> pull(totalPopulation)
 }
+
+if(city == "Louisville-Jefferson County metro government"){
+  index <- 137
+  tPop <- totalPop[index, ] |> pull(totalPopulation)
+}
+
 
 # filter health data to city 
 cH <- cityHealth[cityHealth$city == city, ]
