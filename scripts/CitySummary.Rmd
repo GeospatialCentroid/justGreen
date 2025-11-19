@@ -8,9 +8,8 @@ params:
   state: NA 
 ---
 
-
 ```{r load_packages_functions, echo=FALSE, message=FALSE, warning=FALSE}
-pacman::p_load(leaflet, dplyr, readr,sf, terra, plotly)
+pacman::p_load(leaflet, dplyr, readr,sf, terra, plotly, stringr)
 sf_use_s2(FALSE)
 ### function for control number of character after the decimal place 
 sigfig <- function(vec, n=3){ 
@@ -28,8 +27,16 @@ source("~/trueNAS/work/justGreenShiny/functions/gaugeChart.R")
 
 ```{r set input parameters, echo=FALSE, message=FALSE, warning=FALSE}
 ## all these features should be defined as input parameters before the rmd is called to better hand the path 
-city <- params$cityName
-state <-  params$state 
+
+test <- TRUE 
+if(isTRUE(test)){
+  city <- cityName
+  # state 
+}else{
+  city <- params$cityName
+  state <-  params$state   
+}
+
 cityHealth <-read_csv("~/trueNAS/work/justGreen/data/products/healthMeasures/allCities_2023_morDemStroke_with10percentAdjust.csv") 
 ctHealth <- read_csv("~/trueNAS/work/justGreen/data/products/healthMeasures/allCT_2023_morDemStroke_with10percentAdjust_svi.csv")
 totalPop <- read_csv("~/trueNAS/work/justGreen/data/processed/top200_2023/totalPopCities.csv")
@@ -44,20 +51,34 @@ ctFiles <- list.files("~/trueNAS/work/justGreen/data/processed/censusGeographies
 ```
 
 ```{r filter datasets, echo=FALSE, message=FALSE, warning=FALSE}
-# pop data 
-tPop <- totalPop[totalPop$NAME == city, ] |> pull(totalPopulation)
+
+if(city %in% c("Augusta-Richmond County consolidated government")){
+  index <- grep(pattern = city, x = totalPop$NAME)
+  tPop <- totalPop[index, ] |> pull(totalPopulation)
+}else{
+  tPop <- totalPop[totalPop$NAME %in% city, ] |> pull(totalPopulation)
+}
 
 # filter health data to city 
 cH <- cityHealth[cityHealth$city == city, ]
-ctH <- ctHealth[ctHealth$city == city, ]
+ctH <- ctHealth[ctHealth$city == city, ] |>
+    mutate(
+    geoid = as.character(geoid),      # Force to text
+    geoid = str_trim(geoid),          # Remove white space
+    geoid = str_pad(geoid, width = 11, side = "left", pad = "0") # Add leading zero
+  )
 # filter spatial data to state and city 
 ## city level 
 cS <- terra::vect(cityFiles[grepl(pattern = state, x = cityFiles)])|>
   terra::makeValid()
 cS <- cS[cS$NAME == city, ] 
 ## census tract 
-ctS <- terra::vect(ctFiles[grepl(pattern = state, x = ctFiles)])|>
-  terra::makeValid()
+ctS <- terra::vect(ctFiles[grepl(pattern = state, x = ctFiles)]) |>
+  terra::mask(cS)
+
+# index of when ct geoid match 
+index <- ctS$GEOID %in% ctH$geoid
+
 ctS <- ctS[ctS$GEOID %in% ctH$geoid, ] 
 ctS$geoid <- ctS$GEOID
 # join health data 
@@ -67,6 +88,8 @@ ctS <- terra::merge(x = ctS, y = ctH, by = "geoid")
 crop_ct <- terra::crop(ctS, cS)
 # select the census tracts 
 ct_select <- ctS[ctS$GEOID %in% crop_ct$GEOID,]
+# remove all negitive values from the rpl_theme 
+ct_select$RPL_THEMES <- if_else(ct_select$RPL_THEMES < 0, NA, ct_select$RPL_THEMES)
 
 ```
 
@@ -297,13 +320,14 @@ map
 
 ```{r svi data, echo=FALSE, message=FALSE, warning=FALSE}
 ct_data <- as.data.frame(ct_select)
-quartile_breaks <- quantile(ct_data$RPL_THEMES)
+quartile_breaks <- quantile(ct_data$RPL_THEMES,na.rm = TRUE )
 ct_data$quantile <- ntile(ct_data$RPL_THEMES, 4)
 ct_data$qNDVI <- ntile(ct_data$meanNDVI, 4)
 # function for flipping values 
 absRound <- function(val){
   round(abs(val), 2)
 }
+
 
 # average of all tracts 
 ndvi1 = mean(ct_data$meanNDVI, na.rm=TRUE)
@@ -339,7 +363,8 @@ knitr::kable(tableData)
 ## census tracts visualized with NDVI values - ctS 
 pal <- colorNumeric(
   palette = "YlGnBu",
-  domain = ct_select$RPL_THEMES
+  domain = ct_select$RPL_THEMES,
+  na.color = "#808080"
 )
 
 ## select that census tracts in the 4 quintile for SVI 
@@ -428,7 +453,7 @@ map <- leaflet() %>%
   # Add a legend to explain the color scale
   addLegend(
     pal = pal,
-    values = ct_select$RPL_THEMES,
+    values = na.omit(ct_select$RPL_THEMES),
     opacity = 0.7,
     title = "SVI by Tract",
     position = "bottomright"

@@ -76,11 +76,17 @@ processNDVI <- function(city, ndviFiles) {
 }
 
 
+# testing
+cityNames <- cities$NAME
+testCity <- grep(pattern = "Bridgeport city", x = cities$NAME)
+t1 <- processNDVI(city = cityList[[18]], ndviFiles = ndvi)
+
+
 plan(multicore, workers = 10) # works but have to run from terminal.
 # plan(sequential)
 ## not a super long run time but fast with multicore!
 tic()
-results <- future_map(.x = cityList, .f = processNDVI, ndviFiles = ndvi)
+results <- future_map(.x = cityList, .f = cityList[[18]], ndviFiles = ndvi)
 toc()
 # 50 features sequential 9.5 sec
 # 50 features multicore 2.756 sec
