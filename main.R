@@ -2,6 +2,7 @@
 pacman::p_load(dplyr, terra, sf, tmap, purrr, furrr, readr)
 
 
+
 # download population data
 print("downloading population data")
 source("scripts/0_downloadPopulationData.R")
@@ -29,7 +30,12 @@ source("scripts/3b_55plusInCities.R")
 print("processing lakes and oceans")
 source("scripts/4_processWaterFiles.R")
 
-# download data from google drive
+
+# Download data from Google Drive using the gdown package.
+# Ensure that gdown is installed, or install it using pacman::p_load(gdown).
+# The script assumes you have a file ID for the Google Drive document you want to download.
+
+gdown::download(id = "your_google_drive_file_id", destfile = "path_to_save_downloaded_file")
 ## unlikely to work due to unique id to drive folder.
 ## should only need after python pull from GEE script is rerun
 

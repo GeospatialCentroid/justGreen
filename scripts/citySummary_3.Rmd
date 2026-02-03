@@ -1,0 +1,561 @@
+---
+title: "JustGreen Tool Report"
+output:
+  html_document:
+    css: null
+params:
+  cityName: NA
+  state: NA
+---
+
+<style>
+/* --- STYLING FROM SHINY APP (style.css) --- */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+
+body {
+  font-family: 'Poppins', Arial, sans-serif;
+  color: #333;
+  background-color: #ffffff; /* White background for report */
+  line-height: 1.6;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #1E4D2B; /* CSU Green */
+  font-weight: 600;
+}
+
+h2 {
+  background-color: #f0f0f0;
+  border-left: 5px solid #C8C372; /* CSU Gold */
+  padding: 10px 15px;
+  margin-top: 40px;
+  font-size: 1.8em;
+  border-radius: 4px;
+}
+
+h3 {
+  color: #2d7a4d;
+  font-size: 1.4em;
+  margin-top: 25px;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 5px;
+}
+
+/* Table Styling */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+  font-size: 0.95em;
+}
+
+th {
+  background-color: #1E4D2B !important; /* Force green header */
+  color: white !important;
+  padding: 12px 15px;
+  text-align: left;
+}
+
+td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #E3EBE6;
+}
+
+tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+/* Bullet Points Fix */
+ul {
+  margin-bottom: 15px;
+  padding-left: 25px;
+}
+
+li {
+  margin-bottom: 5px;
+}
+
+/* Print Instruction Box */
+.print-box {
+  background-color: #e8f5e9;
+  border: 1px solid #1E4D2B;
+  color: #1E4D2B;
+  padding: 15px;
+  margin-bottom: 30px;
+  border-radius: 5px;
+  font-size: 0.9em;
+}
+
+.btn-print {
+  background-color: #1E4D2B;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  margin-left: 10px;
+}
+/* --- FOOTER HORIZONTAL FIX --- */
+.footer-banner {
+  margin-top: 50px;
+  background-color: #1E4D2B; 
+  color: white;
+  display: flex !important;             /* Force Flexbox */
+  flex-direction: row !important;       /* Force Horizontal */
+  justify-content: space-between !important; 
+  align-items: center !important;       /* Vertical center alignment */
+  padding: 15px 25px;
+  border-radius: 5px;
+  width: 100% !important;
+  box-sizing: border-box;
+}
+
+/* Ensure no hidden paragraph tags inside the banner break the layout */
+.footer-banner p {
+  display: contents !important;
+}
+
+.footer-banner span {
+  text-align: center;
+  font-size: 0.9em;
+  line-height: 1.3;
+  flex: 1 1 auto;              /* Allow text to fill the middle */
+  margin: 0 15px;
+}
+
+.footer-banner img {
+  display: block !important;
+  flex: 0 0 auto !important;   /* Prevent logos from squashing or wrapping */
+  max-width: none !important;
+}
+</style>
+
+```{r load_packages_functions, echo=FALSE, message=FALSE, warning=FALSE}
+# Ensure pacman is available
+if (!require("pacman")) install.packages("pacman")
+
+# Load packages
+pacman::p_load(leaflet, dplyr, readr, sf, terra, plotly, stringr, knitr, kableExtra, ggplot2, RColorBrewer)
+sf_use_s2(FALSE)
+```
+
+```{r load_data, echo=FALSE, message=FALSE, warning=FALSE}
+test <- FALSE 
+if(isTRUE(test)){
+  city <- "Fort Collins city"
+  state <- "Colorado" 
+} else {
+  city <- params$cityName
+  state <- params$state   
+}
+
+# Note: Paths remain absolute as requested
+cityHealth <- read_csv("~/trueNAS/work/justGreen/data/products/healthMeasures/allCities_2023_morDemStroke_with10percentAdjust.csv") 
+ctHealth <- read_csv("~/trueNAS/work/justGreen/data/products/healthMeasures/allCT_2023_morDemStroke_with10percentAdjust_svi.csv")
+totalPop <- read_csv("~/trueNAS/work/justGreen/data/processed/top200_2023/totalPopCities.csv")
+
+# files
+cityFiles <- list.files("~/trueNAS/work/justGreen/data/processed/top200_2023", 
+                        pattern = ".gpkg",
+                        full.names = TRUE)
+ctFiles <- list.files("~/trueNAS/work/justGreen/data/processed/censusGeographies", 
+                        pattern = "ct.gpkg",
+                        full.names = TRUE)
+```
+
+```{r structure health data, echo=FALSE, message=FALSE, warning=FALSE}
+
+# Population Filtering Logic
+if(city %in% c("Augusta-Richmond County consolidated government", "Indianapolis city","Nashville-Davidson metropolitan government")){
+  index <- grep(pattern = city, x = totalPop$NAME)
+  tPop <- totalPop[index, ] |> pull(totalPopulation)
+} else {
+  tPop <- totalPop[totalPop$NAME %in% city, ] |> pull(totalPopulation)
+}
+
+if(city == "Louisville-Jefferson County metro government"){
+  index <- 137
+  tPop <- totalPop[index, ] |> pull(totalPopulation)
+}
+
+# Filter Health Data
+cH <- cityHealth[cityHealth$state == state & cityHealth$city == city, ] 
+ctH <- ctHealth[ctHealth$state == state & ctHealth$city == city, ]
+
+# Formatting GEOIDs for join
+ctH <- ctH |>
+    mutate(
+    geoid = as.character(geoid),      
+    geoid = str_trim(geoid),          
+    geoid = str_pad(geoid, width = 11, side = "left", pad = "0") 
+  )
+
+# Filter Spatial Data
+## City Boundary
+cS <- terra::vect(cityFiles[grepl(pattern = state, x = cityFiles)]) |>
+  terra::makeValid()
+cS <- cS[cS$NAME == city, ]
+
+## Census Tracts
+ctS <- terra::vect(ctFiles[grepl(pattern = state, x = ctFiles)]) |>
+  terra::mask(cS)
+
+# Join health data to spatial data
+ctS <- ctS[ctS$GEOID %in% ctH$geoid, ]
+ctS$geoid <- ctS$GEOID
+ctS <- terra::merge(x = ctS, y = ctH, by = "geoid")
+
+# Crop and Clean
+crop_ct <- terra::crop(ctS, cS)
+ct_select <- ctS[ctS$GEOID %in% crop_ct$GEOID,]
+ct_select$RPL_THEMES <- if_else(ct_select$RPL_THEMES < 0, NA, ct_select$RPL_THEMES)
+
+# Convert to SF for leaflet
+ct_sf <- sf::st_as_sf(ct_select)
+city_sf <- sf::st_as_sf(cS)
+```
+
+```{r process initial health measures , echo=FALSE, message=FALSE, warning=FALSE}
+# --- NDVI & Rankings ---
+cityNDVI <- round(cH$meanNDVI, 3)
+ndvi_sorted <- cityHealth |>
+  arrange(desc(meanNDVI)) |>
+  mutate(rank = row_number()) |>
+  mutate(percentile = (1 - (rank / n())) * 100)
+
+rankNDVI <- round(ndvi_sorted[ndvi_sorted$city == city, ] |> pull(percentile), 0)
+
+# --- Population ---
+popTable <- data.frame(
+  `total population` = tPop,
+  `p20` = cH$popOver20_2023,
+  `p35` = cH$popOver35_2023,
+  `p55` = as.numeric(cH$popOver55_2023)
+)
+
+popTable_formated <- as.data.frame(
+  lapply(popTable, function(x) {
+    format(x, big.mark = ",", scientific = FALSE)
+  })
+)
+
+# --- Health Metrics (Positive Values) ---
+mortality_current <- abs(round(cH$ls_Mortality, 0))
+mortality_10 <- abs(round(cH$ls_Mortality10, 0))
+mortality_diff <- abs(mortality_10 - mortality_current)
+
+stroke_current <- abs(round(cH$ls_Stroke, 0))
+stroke_10 <- abs(round(cH$ls_Stroke10, 0))
+stroke_diff <- abs(stroke_10 - stroke_current)
+
+dementia_current <- abs(round(cH$ls_Dementia, 0))
+dementia_10 <- abs(round(cH$ls_Dementia10, 0))
+dementia_diff <- abs(dementia_10 - dementia_current)
+
+# Rates (Positive)
+mortality_rate <- abs(round(cH$ls_Mortality_Rate, 1))
+stroke_rate <- abs(round(cH$ls_Stroke_Rate, 1))
+dementia_rate <- abs(round(cH$ls_Dementia_Rate, 1))
+
+# --- Confidence Intervals (CI) ---
+# Assuming standard naming convention from the CSV (ls_Mortality_Lower, ls_Mortality_Upper)
+# If columns are missing, this creates "NA - NA" safely.
+get_ci_string <- function(val_lower, val_upper) {
+  l <- format(abs(round(val_lower, 0)), big.mark=",")
+  u <- format(abs(round(val_upper, 0)), big.mark=",")
+  paste0(l, " – ", u)
+}
+
+# Use the column names from your specific CSV structure
+ci_mortality <- get_ci_string(cH$ls_Mortality_low_Rate, cH$ls_Mortality_high_Rate)
+ci_stroke    <- get_ci_string(cH$ls_Stroke_low_Rate, cH$ls_Stroke_high_Rate)
+ci_dementia  <- get_ci_string(cH$ls_Dementia_low_Rate, cH$ls_Dementia_high_Rate)
+
+```
+
+<div class="print-box"> <strong>How to save this report:</strong>
+
+This document is designed to be saved as a PDF using your browser. <ol style="margin-top:5px; margin-bottom:5px;"> <li>Press <strong>Ctrl + P</strong> (Windows) or <strong>Cmd + P</strong> (Mac).</li> <li>Change "Destination" to <strong>Save as PDF</strong>.</li> <li>Ensure "Background graphics" is checked in the settings to see colors and maps.</li> </ol> </div>
+
+## Green Spaces and Health Impact
+**Location:** `r paste0(city, ", ",state)` <br>
+**Report Date:** `r Sys.Date()` <br>
+**Generate by:** <a href="https://geocentroid.shinyapps.io/JustGreen/" target="_blank" rel="noopener noreferrer">
+  JustGreen
+</a>
+
+---
+
+### Summary
+**`r city`** has a greenness level (NDVI) of **`r cityNDVI`**, ranking in the **`r rankNDVI`th percentile** among the 200 largest US cities.
+
+
+```{r summary_table, echo=FALSE}
+summary_data <- data.frame(
+  Metric = c("Lives saved annually", "Stroke cases prevented", "Dementia cases prevented"),
+  `Current Vegetation Benefits` = c(
+    format(mortality_current, big.mark=","),
+    format(stroke_current, big.mark=","),
+    format(dementia_current, big.mark=",")
+  ),
+  `Potential with 10% More Vegetation` = c(
+    paste(format(mortality_diff, big.mark=","), "additional lives saved"),
+    paste(format(stroke_diff, big.mark=","), "additional cases prevented"),
+    paste(format(dementia_diff, big.mark=","), "additional cases prevented")
+  )
+)
+
+kable(summary_data, col.names = c("", "Current Vegetation Benefits", "Potential with 10% More Vegetation")) %>%
+  kable_styling(bootstrap_options = c("striped"), full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#1E4D2B")
+```
+
+---
+
+### Your City's Greenness
+* **NDVI:** `r cityNDVI` (0–1 scale)
+* **Ranking:** `r rankNDVI`th percentile
+* **National average:** 0.59
+
+**Demographics**
+
+```{r pop_table, echo=FALSE}
+kable(popTable_formated, col.names = c("Total Population", "Adults 20+", "Adults 35+", "Adults 55+"), align = "l") %>%
+  kable_styling(full_width = FALSE, position = "center")
+```
+
+**Visual Comparison**
+
+```{r viz_comparison, echo=FALSE, fig.height=2.5, fig.width=8}
+comp_data <- data.frame(
+  Label = c("Lowest city", "National average", city, "Highest city"),
+  Value = c(0.25, 0.59, cityNDVI, 0.82), 
+  Color = c("grey", "grey", "green", "grey")
+)
+comp_data$Label <- factor(comp_data$Label, levels = rev(comp_data$Label))
+
+ggplot(comp_data, aes(x = Value, y = Label, fill = Color)) +
+  geom_col(width = 0.6) +
+  geom_text(aes(label = Value), hjust = -0.2, size = 3.5) +
+  scale_fill_manual(values = c("green" = "#1E4D2B", "grey" = "#cccccc")) +
+  theme_minimal() +
+  labs(x = "NDVI Score", y = "") +
+  xlim(0, 1) +
+  theme(legend.position = "none",
+        panel.grid.major.y = element_blank(),
+        axis.text.y = element_text(size=10, face="bold"))
+```
+
+---
+
+### Health Benefits of Current Vegetation
+The vegetation in **`r city`**—parks, lawns, gardens, shrubs, natural areas—provides measurable health benefits each year.
+
+```{r health_table, echo=FALSE}
+# Altered table to show positive numbers and Confidence Intervals
+health_df <- data.frame(
+  Outcome = c("Lives Saved", "Stroke cases prevented", "Dementia cases prevented"),
+  Cases = c(format(mortality_current, big.mark=","), format(stroke_current, big.mark=","), format(dementia_current, big.mark=",")),
+  CI = c(ci_mortality, ci_stroke, ci_dementia),
+  Rate = c(mortality_rate, stroke_rate, dementia_rate)
+)
+
+kable(health_df, col.names = c("Outcome", "Annual Cases (Estimate)", "95% Confidence Interval", "Rate per 100,000")) %>%
+  kable_styling(bootstrap_options = "striped", full_width = TRUE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#1E4D2B")
+```
+
+*These estimates compare current vegetation to a low-greenness scenario (NDVI ≈ 0.2). They draw on meta-analyses of 8+ million people showing approximately 4% lower mortality risk per 0.1-unit NDVI increase.*
+
+---
+
+### What a 10% Increase Could Achieve
+
+```{r scenario_table, echo=FALSE}
+scen_df <- data.frame(
+  Scenario = c("Current", "+10% vegetation"),
+  NDVI = c(cityNDVI, round(cityNDVI * 1.10, 3)),
+  Lives = c(format(mortality_current, big.mark=","),
+             paste0(format(mortality_10, big.mark=","), " (+", format(mortality_diff, big.mark=","), ")")),
+  Strokes = c(format(stroke_current, big.mark=","),
+              paste0(format(stroke_10, big.mark=","), " (+", format(stroke_diff, big.mark=","), ")")),
+  Dementia = c(format(dementia_current, big.mark=","),
+               paste0(format(dementia_10, big.mark=","), " (+", format(dementia_diff, big.mark=","), ")"))
+)
+
+kable(scen_df, col.names = c("Scenario", "NDVI", "Lives Saved", "Stroke Cases Prevented", "Dementia Cases Prevented"), align = "c") %>%
+  kable_styling(bootstrap_options = "bordered", full_width = TRUE)
+```
+
+A 10% increase in NDVI can be achieved through combinations of native plant restoration, park expansion, green infrastructure, and residential landscaping. Native, drought-tolerant vegetation provides equivalent NDVI benefits while requiring less water and maintenance than exotic species.
+
+---
+### Priority Areas for Greening
+These census tracts have high population density and low vegetation—locations where added green space would benefit the most people.
+```{r priority_map, echo=FALSE, message=FALSE, fig.height=5, fig.width=9}
+# Prepare Data
+ct_sf_clean <- ct_sf %>% filter(!is.na(meanNDVI), !is.na(popOver20_2023))
+
+# Calculate Priority (Low NDVI * High Pop)
+ct_sf_clean <- ct_sf_clean %>%
+  mutate(priority_score = (1 - meanNDVI) * popOver20_2023) %>%
+  arrange(desc(priority_score))
+
+top_5 <- head(ct_sf_clean, 5)
+
+# Palettes
+pal_ndvi <- colorNumeric("YlOrRd", domain = ct_sf_clean$priority_score)
+
+# Map with Layers and Popup similar to App
+leaflet() %>%
+  addMapPane("borders", zIndex = 410) %>%
+  # Base Groups
+  addProviderTiles(providers$CartoDB.Positron, group = "Simple Map") %>%
+  addProviderTiles(providers$Esri.WorldImagery, group = "Satellite") %>%
+  
+  # Census Tracts (Current Vegetation)
+  addPolygons(
+    data = ct_sf_clean,
+    group = "Priority Score",
+    fillColor = ~pal_ndvi(priority_score),
+    fillOpacity = 0.7,
+    color = "#444444",
+    weight = 1,
+    highlightOptions = highlightOptions(weight = 3, color = "#666", fillOpacity = 0.9, bringToFront = FALSE),
+    
+    # Popup Matching App
+    popup = ~paste0(
+      "<b>Census Tract:</b> ", GEOID, "<br>",
+      "<hr style='margin: 5px 0;'>",
+      "<b>Population (20+):</b> ", popOver20_2023, "<br>",
+      "<b>Greenness (NDVI):</b> ", round(meanNDVI, 3), "<br>",
+      "<b>Lives Saved:</b> ", round(abs(ls_Mortality_Rate), 0), " <small>(per 100k)</small><br>",
+      "<b>Strokes Prevented:</b> ", round(abs(ls_Stroke_Rate), 0), " <small>(per 100k)</small><br>",
+      "<b>Dementia Prevented:</b> ", round(abs(ls_Dementia_Rate), 0), " <small>(per 100k)</small><br>",
+      "<b>Social Vulnerability:</b> ", round(RPL_THEMES, 2)
+    ),
+    label = ~paste0("Population Over 20: ", popOver20_2023)
+  ) %>%
+  
+  # Priority Tracts Layer
+  addPolygons(
+    data = top_5, 
+    group = "Priority Tracts",
+    color = "#3CF7FB", 
+    weight = 3, 
+    fill = FALSE, 
+    opacity = 1
+  ) %>%
+  
+  # City Boundary
+  addPolygons(
+    data = city_sf,
+    group = "City Boundary",
+    fill = FALSE,
+    color = "black",
+    weight = 2,
+    options = pathOptions(pane = "borders")
+  ) %>%
+  
+  # Controls
+  addLayersControl(
+    baseGroups = c("Simple Map", "Satellite"),
+    overlayGroups = c("Priority Score", "Priority Tracts", "City Boundary"),
+    options = layersControlOptions(collapsed = FALSE)
+  ) %>%
+  addLegend("bottomright", pal = pal_ndvi, values = ct_sf_clean$priority_score, title = "Priority Score")
+```
+
+**Top 5 Priority Tracts**
+```{r priority_list, echo=FALSE}
+priority_table <- top_5 %>%
+  sf::st_drop_geometry() %>%
+  select(GEOID, meanNDVI, popOver20_2023) %>% 
+  mutate(Rank = 1:5, Area = "Neighborhood/Street") %>%
+  select(Rank, GEOID, Area, meanNDVI, popOver20_2023)
+
+kable(priority_table, col.names = c("Rank", "Census Tract", "Area Description", "Current NDVI", "Population 20+")) %>%
+  kable_styling(bootstrap_options = "striped", full_width = TRUE)
+```
+
+<!-- --- -->
+
+### Equity Analysis
+The CDC Social Vulnerability Index (SVI) identifies neighborhoods facing socioeconomic and health disadvantages. In many cities, these same neighborhoods have less green space.
+
+```{r equity_table,  message=FALSE,echo=FALSE}
+ct_equity <- ct_sf_clean %>% filter(!is.na(RPL_THEMES)) %>%
+  mutate(svi_quartile = ntile(RPL_THEMES, 4))
+
+equity_summary <- ct_equity %>%
+  group_by(svi_quartile) %>%
+  summarise(
+    Mean_SVI = mean(RPL_THEMES, na.rm=T),
+    Mean_NDVI = mean(meanNDVI, na.rm=T),
+    # Fixed: "Lives Saved" and absolute values
+    Lives_Saved = abs(mean(ls_Mortality_Rate, na.rm=T))
+  ) %>%
+  st_drop_geometry() %>%
+  mutate(Label = c("Lowest vulnerability (Q1)", "Moderate-low (Q2)", "Moderate-high (Q3)", "Highest vulnerability (Q4)")) %>%
+  select(Label, Mean_SVI, Mean_NDVI, Lives_Saved)
+
+kable(equity_summary, digits = 2, col.names = c("SVI Quartile", "Mean SVI", "Mean NDVI", "Lives Saved per 100k")) %>%
+  kable_styling(full_width = TRUE)
+```
+
+**Interpretation for `r city`**
+```{r equity_logic, echo=FALSE, results='asis'}
+q1_ndvi <- equity_summary$Mean_NDVI[1]
+q4_ndvi <- equity_summary$Mean_NDVI[4]
+is_equitable <- (q1_ndvi - q4_ndvi) < 0.05 
+
+if (is_equitable) {
+  cat("**Result: Equitable Distribution.** Greenness is similar across vulnerability quartiles in ", city, ", suggesting relatively equitable distribution. Priority areas for new investment still exist.")
+} else {
+  cat("**Result: Inequitable Distribution.** Higher-vulnerability neighborhoods have less vegetation than lower-vulnerability areas. This gap means communities with greater health needs receive fewer protective benefits from green space.")
+}
+```
+
+<!-- --- -->
+
+### Recommendations
+
+**For Local Officials**
+
+* **Set a vegetation target.** `r city` ranks in the `r rankNDVI`th percentile.
+* **Direct resources to priority tracts.** Focus on the tracts listed above that combine high need and low current vegetation.
+* **Favor native plants in public projects.** Native grasses, shrubs, and ground covers require less water and support local ecosystems.
+
+**For Residents**
+
+* **Add vegetation to your property.** Native plants, ground covers, and gardens all contribute to neighborhood greenness.
+* **Choose climate-appropriate species.** Contact your local extension office or native plant society for regionally adapted options.
+* **Advocate for green space.** Share this report with local officials. Attend planning meetings when parks or development projects are discussed.
+
+**For Urban Planners**
+
+* **Require vegetation in new development.** Minimum green cover ratios or NDVI targets can be written into zoning.
+* **Use green infrastructure.** Bioswales, rain gardens, and permeable surfaces deliver stormwater and health benefits together.
+* **Connect green spaces.** Corridors and greenways extend habitat value and resident access.
+
+
+<!-- --- -->
+
+
+**Data and Methods**
+
+* **Vegetation (NDVI):** ESA Sentinal-2
+* **Population:** US Census ACS
+* **Social Vulnerability:** CDC SVI
+* **Mortality baseline:** CDC
+
+**Citation**: *publicaiton reference to come* 
+
+**Contact**: david.rojas&#64;colostate.edu
+
+<div class="footer-banner">
+  <img src="rojosLogo.png" height="80px">
+  <span>Rojos Lab - Geospatial Centroid<br>Colorado State University © January 2026</span>
+  <img src="centroid_white_gray_logo_CROPPED.png" height="60px">
+</div>
+

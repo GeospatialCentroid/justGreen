@@ -141,15 +141,13 @@ popTable_formated <- as.data.frame(
 
 ```
 
-
-
 ## Green Spaces and Health Impact 
 **Location:**  `r paste0(city, ", ",state)`
 <br>
 **Report Date:** `r Sys.Date()` 
 
 
-## Your Green Space Overview
+## Summary 
 * **Current Vegetation Level (NDVI):** `r cityNDVI` (Scale: 0.0-1.0, where 1.0 = maximum vegetation) 
 * **NDVI Ranking:** `r paste0(rankNDVI,"th percentile")` compared to similar US cities 
 * **Population Ranking:** `r paste0(rankPop,"th percentile")` compared to the top 200 most populated US cities 
