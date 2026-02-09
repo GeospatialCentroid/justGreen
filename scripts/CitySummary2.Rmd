@@ -248,7 +248,7 @@ health_df <- data.frame(
   CI = c(" - ", " - ", " - ") # Placeholder for Confidence Intervals
 )
 
-kable(health_df, col.names = c("Outcome", "Annual Cases Prevented", "Rate per 100,000", "95% CI Rate")) %>%
+kable(health_df, col.names = c("Outcome", "Annual Cases Prevented", "Rate per 100,000", "95% CI")) %>%
   kable_styling(bootstrap_options = "striped", full_width = TRUE)
 ```
 
