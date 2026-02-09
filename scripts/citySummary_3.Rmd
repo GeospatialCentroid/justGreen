@@ -260,9 +260,11 @@ dementia_rate <- abs(round(cH$ls_Dementia_Rate, 1))
 # --- Confidence Intervals (CI) ---
 # Assuming standard naming convention from the CSV (ls_Mortality_Lower, ls_Mortality_Upper)
 # If columns are missing, this creates "NA - NA" safely.
-get_ci_string <- function(val_lower, val_upper) {
-  l <- format(abs(round(val_lower, 0)), big.mark=",")
-  u <- format(abs(round(val_upper, 0)), big.mark=",")
+get_ci_string <- function(val_1, val_2) {
+  # Calculate absolute values and sort to ensure low-to-high order
+  vals <- sort(abs(round(c(val_1, val_2), 0)))
+  l <- format(vals[1], big.mark=",")
+  u <- format(vals[2], big.mark=",")
   paste0(l, " – ", u)
 }
 
@@ -273,9 +275,6 @@ ci_dementia  <- get_ci_string(cH$ls_Dementia_low_Rate, cH$ls_Dementia_high_Rate)
 
 ```
 
-<div class="print-box"> <strong>How to save this report:</strong>
-
-This document is designed to be saved as a PDF using your browser. <ol style="margin-top:5px; margin-bottom:5px;"> <li>Press <strong>Ctrl + P</strong> (Windows) or <strong>Cmd + P</strong> (Mac).</li> <li>Change "Destination" to <strong>Save as PDF</strong>.</li> <li>Ensure "Background graphics" is checked in the settings to see colors and maps.</li> </ol> </div>
 
 ## Green Spaces and Health Impact
 **Location:** `r paste0(city, ", ",state)` <br>
@@ -356,11 +355,11 @@ The vegetation in **`r city`**—parks, lawns, gardens, shrubs, natural areas—
 health_df <- data.frame(
   Outcome = c("Lives Saved", "Stroke cases prevented", "Dementia cases prevented"),
   Cases = c(format(mortality_current, big.mark=","), format(stroke_current, big.mark=","), format(dementia_current, big.mark=",")),
-  CI = c(ci_mortality, ci_stroke, ci_dementia),
-  Rate = c(mortality_rate, stroke_rate, dementia_rate)
+  Rate = c(mortality_rate, stroke_rate, dementia_rate),
+    CI = c(ci_mortality, ci_stroke, ci_dementia)
 )
 
-kable(health_df, col.names = c("Outcome", "Annual Cases (Estimate)", "95% Confidence Interval", "Rate per 100,000")) %>%
+kable(health_df, col.names = c("Outcome", "Annual Cases (Estimate)", "Rate per 100,000", "95% Confidence Interval")) %>%
   kable_styling(bootstrap_options = "striped", full_width = TRUE) %>%
   row_spec(0, bold = TRUE, color = "white", background = "#1E4D2B")
 ```
@@ -552,6 +551,11 @@ if (is_equitable) {
 **Citation**: *publicaiton reference to come* 
 
 **Contact**: david.rojas&#64;colostate.edu
+
+<div class="print-box"> <strong>How to save this report:</strong>
+
+This document is designed to be saved as a PDF using your browser. <ol style="margin-top:5px; margin-bottom:5px;"> <li>Press <strong>Ctrl + P</strong> (Windows) or <strong>Cmd + P</strong> (Mac).</li> <li>Change "Destination" to <strong>Save as PDF</strong>.</li> <li>Ensure "Background graphics" is checked in the settings to see colors and maps.</li> </ol> </div>
+
 
 <div class="footer-banner">
   <img src="rojosLogo.png" height="80px">
