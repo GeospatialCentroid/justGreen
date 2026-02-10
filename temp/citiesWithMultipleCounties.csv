@@ -1,0 +1,38 @@
+fullCity,County,county_sum_over20,city_total_over20,percent_of_city
+"Amarillo, Texas",Potter County,67858,133165,50.957834265760525
+"Amarillo, Texas",Randall County,65307,133165,49.04216573423948
+"Aurora, Colorado",Adams County,32370,284379,11.382697034591162
+"Aurora, Colorado",Arapahoe County,227549,284379,80.01610526796986
+"Aurora, Colorado",Denver County,19027,284379,6.690719075599816
+"Aurora, Colorado",Douglas County,5433,284379,1.9104786218391654
+"Aurora, Illinois",DuPage County,46839,160129,29.250791549313366
+"Aurora, Illinois",Kane County,87797,160129,54.82891918390798
+"Aurora, Illinois",Kendall County,4306,160129,2.689081927695795
+"Aurora, Illinois",Will County,21187,160129,13.231207339082864
+"Frisco, Texas",Collin County,97517,162154,60.13851030501869
+"Frisco, Texas",Denton County,64637,162154,39.86148969498131
+"Grand Prairie, Texas",Dallas County,31239,45571,68.55017445305128
+"Grand Prairie, Texas",Ellis County,3708,45571,8.13675363718154
+"Grand Prairie, Texas",Tarrant County,10624,45571,23.313071909767178
+"Kansas City, Missouri",Cass County,1100,347362,0.3166725203102239
+"Kansas City, Missouri",Clay County,96448,347362,27.765846580800435
+"Kansas City, Missouri",Jackson County,214177,347362,61.658154893166206
+"Kansas City, Missouri",Platte County,35637,347362,10.259326005723137
+"Mesquite, Texas",Dallas County,114747,127761,89.81379294150797
+"Mesquite, Texas",Kaufman County,13014,127761,10.186207058492029
+"Naperville, Illinois",DuPage County,51976,80205,64.80393990399601
+"Naperville, Illinois",Will County,28229,80205,35.19606009600399
+"New York, New York",Bronx County,874658,5634875,15.522225426473524
+"New York, New York",Kings County,1729732,5634875,30.696900996029193
+"New York, New York",New York County,1156384,5634875,20.521910423922446
+"New York, New York",Queens County,1555962,5634875,27.61307038754187
+"New York, New York",Richmond County,318139,5634875,5.645892766032964
+"Oklahoma City, Oklahoma",Canadian County,62464,494619,12.628710178945814
+"Oklahoma City, Oklahoma",Cleveland County,63706,494619,12.87981254258328
+"Oklahoma City, Oklahoma",Oklahoma County,368449,494619,74.49147727847091
+"Salem, Oregon",Marion County,114661,134347,85.34690019129567
+"Salem, Oregon",Polk County,19686,134347,14.653099808704326
+"Sioux Falls, South Dakota",Lincoln County,23623,125413,18.836165309816366
+"Sioux Falls, South Dakota",Minnehaha County,101790,125413,81.16383469018363
+"Yonkers, New York",Bronx County,21499,160240,13.41674987518722
+"Yonkers, New York",Westchester County,138741,160240,86.58325012481278
