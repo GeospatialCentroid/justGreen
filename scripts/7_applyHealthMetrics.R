@@ -5,6 +5,9 @@
 pacman::p_load(dplyr, sf, tidyr, tmap, readr)
 
 # run on all cities  ------------------------------------------------------
+print("altering mortality for weighted values")
+
+
 print("city metrics")
 source("scripts/metricsToAllCities.R")
 

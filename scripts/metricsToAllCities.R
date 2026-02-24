@@ -93,9 +93,10 @@ baseNDVI <- 0.1
 # Dose Response Parameters (List format for cleaner reference)
 params <- list(
   mortality = list(est = 0.96, low = 0.94, high = 0.97),
-  stroke = list(est = 0.97, low = 0.96, high = 0.98),
-  dementia = list(est = 0.96, low = 0.95, high = 0.98)
+  stroke = list(est = 0.96, low = 0.95, high = 0.98),
+  dementia = list(est = 0.97, low = 0.96, high = 0.98)
 )
+
 ## freeze function to look at variables up to this point. Seem like the best alternative at the moment to replace run all lines above cursor...
 # browser()
 
