@@ -15,14 +15,36 @@ citiesPop <- st_read(
   "data/processed/top200_2023/allCities.gpkg",
   quiet = TRUE
 ) |>
-  dplyr::select(-popOver20_2023)
+  sf::st_drop_geometry() |>
+  dplyr::select(-OBJECTID, -popOver20_2023)
 
 # Load Mortality Data
-countyMortality <- read_csv("data/raw/mortality/All Cause of Death 2023.csv") |>
+## using the adjusted moratality data layer for specific counties of interest
+# no adjustments
+cm1 <- read_csv(
+  "data/raw/mortality/All Cause of Death 2023.csv"
+) |>
+  # dplyr::filter(is.na(cityAdjustMortality)) |>
   dplyr::transmute(
-    countyGEOID = str_pad(as.character(`County Code`), width = 5, pad = "0"),
+    countyGEOID = sprintf("%05d", `County Code`),
     mortalityRate = as.numeric(`Crude Rate`) / 100000
   )
+# citys to adjust
+cm2 <- read_csv(
+  "data/raw/mortality/adjustedCityMortality_2023.csv"
+) |>
+  dplyr::filter(!is.na(cityAdjustMortality)) |>
+  dplyr::mutate(
+    countyGEOID = countyFips,
+    mortalityRate = cityAdjustMortality / 100000
+  ) |>
+  tidyr::separate(
+    col = city,
+    into = c("City", "State"),
+    sep = ", ",
+    remove = FALSE
+  )
+
 
 # Load Dementia Data
 demData <- read_csv("data/raw/dementia/Dementia_55.csv") |>
@@ -53,21 +75,21 @@ allCities_prep <- citiesNDVI |>
   # Join City Geometry
   left_join(citiesPop, by = c("geoid" = "GEOID")) |>
   # Join Mortality
-  left_join(countyMortality, by = "countyGEOID") |>
+  left_join(cm1, by = "countyGEOID") |>
   # Join Dementia
   left_join(demData, by = "state") |>
   # Join Stroke
   left_join(strokeData, by = "state") |>
   # Join Population Subgroups
   left_join(population_subgroups, by = "geoid") |>
-  # Clean up Rates (Manual Overrides)
-  mutate(
+  dplyr::mutate(
     mortalityRate = case_when(
       state == "Puerto Rico" ~ 0.012828,
       city == "Bridgeport city" ~ 0.006106, # Validation needed
       TRUE ~ mortalityRate
     )
   ) |>
+  # Clean up Rates (Manual Overrides)
   dplyr::select(
     geoid,
     city,
@@ -81,8 +103,30 @@ allCities_prep <- citiesNDVI |>
     popOver55_2023,
     mortalityRate,
     DementiaRate,
-    StrokeRate,
-    geom
+    StrokeRate
+  )
+
+# replace the mortality rate for specific cities with the adjusted mortality rate
+allCities_updated <- allCities_prep %>%
+  mutate(
+    mortalityRate = case_when(
+      # 1. State Filter + 2. Pattern Match
+      state == "Colorado" & grepl("Aurora", city) ~ 0.00913, # 3. Reassign
+      state == "Illinois" & grepl("Aurora", city) ~ 0.00952,
+      state == "Illinois" & grepl("Naperville", city) ~ 0.00962,
+      state == "Missouri" & grepl("Kansas City", city) ~ 0.0120,
+      state == "New York" & grepl("New York", city) ~ 0.00842707709945362,
+      state == "Oklahoma" & grepl("Oklahoma City", city) ~ 0.0124806114059637,
+      state == "Oregon" & grepl("Salem", city) ~ 0.0127853615685241,
+      state == "South Dakota" &
+        grepl("Sioux Falls", city) ~ 0.00995616832324671,
+      state == "Texas" & grepl("Frisco", city) ~ 0.00663588475261851,
+      state == "Texas" & grepl("Grand Prairie", city) ~ 00.00915521713829681,
+      state == "Texas" & grepl("Mesquite", city) ~ 0.00915521713829681,
+      state == "Texas" & grepl("Amarillo", city) ~ 0.0133213159625219,
+      # KEEP everything else the same (Crucial Step!)
+      TRUE ~ mortalityRate
+    )
   )
 
 
@@ -102,7 +146,7 @@ params <- list(
 
 # 4. Calculate Health Measures --------------------------------------------
 
-allCities_final <- allCities_prep |>
+allCities_final <- allCities_updated |>
 
   # --- Mortality Calculations (Pop > 20) ---
   mutate(
@@ -343,10 +387,7 @@ allCities_final <- allCities_prep |>
       ~ (.x / popOver55_2023) * 100000,
       .names = "{.col}_Rate"
     )
-  ) |>
-  st_drop_geometry() |>
-  dplyr::select(-geom)
-
+  )
 
 # 5. Save Output ----------------------------------------------------------
 

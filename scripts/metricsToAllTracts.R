@@ -157,14 +157,13 @@ doseResponseMortality <- 0.96
 drfMortality_low <- 0.94
 drfMortality_high <- 0.97
 
-doseResponseStroke <- 0.97
-drfStroke_low <- 0.96
+doseResponseStroke <- 0.96
+drfStroke_low <- 0.95
 drfStroke_high <- 0.98
 
-doseResponseDementia <- 0.96
-drfDementia_low <- 0.95
+doseResponseDementia <- 0.97
+drfDementia_low <- 0.96
 drfDementia_high <- 0.98
-
 
 # 5. Calculate Health Measures --------------------------------------------
 
