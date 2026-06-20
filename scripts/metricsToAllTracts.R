@@ -14,9 +14,12 @@ ctFiles <- readr::read_csv(
   dplyr::select(
     geoid = GEOID,
     state,
-    totalCells,
-    meanNDVI,
-    standardDevNDVI,
+    totalCells_500m,
+    meanNDVI_500m,
+    standardDevNDVI_500m,
+    totalCells_250m,
+    meanNDVI_250m,
+    standardDevNDVI_250m,
     countyGEOID,
     city = cityName
   )
@@ -29,12 +32,15 @@ ctFiles2 <- list.files(
   purrr::map_dfr(
     readr::read_csv,
     col_types = cols(
-      .default = "c", # Forces all columns (incl. geoid) to char initially
-      meanNDVI = "d",
-      totalCells = "d",
-      standardDevNDVI = "d"
+      .default = "c", 
+      meanNDVI_500m = "d",
+      totalCells_500m = "d",
+      standardDevNDVI_500m = "d",
+      meanNDVI_250m = "d",
+      totalCells_250m = "d",
+      standardDevNDVI_250m = "d"
     )
-  ) |>
+  ) |> #... rest of the block remains the same|>
   dplyr::mutate(
     # Ensure clean 11-digit character string
     geoid = str_pad(geoid, width = 11, side = "left", pad = "0"),
@@ -132,9 +138,12 @@ ct_prep <- allCT |>
     city,
     state,
     countyGEOID,
-    meanNDVI,
-    totalCells,
-    standardDevNDVI,
+    meanNDVI_500m,
+    totalCells_500m,
+    standardDevNDVI_500m,
+    meanNDVI_250m,
+    totalCells_250m,
+    standardDevNDVI_250m,
     # Rename pops to match function requirements
     popOver20_2023 = over20,
     popOver35_2023 = over35,

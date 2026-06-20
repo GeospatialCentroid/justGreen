@@ -1,141 +1,134 @@
-# summaryNDVIPerCensusTRact
-pacman::p_load(terra, dplyr, furrr, purrr, tictoc, readr, tmap, stringr)
+# summaryNDVIPerCensusTract
+pacman::p_load(terra, dplyr, furrr, purrr, tictoc, readr, tmap, stringr, sf)
 tmap_mode("view")
 
-# read in masked NDVI files
-ndvi1 <- list.files(
-  "data/processed/ndvi_noWater",
-  full.names = TRUE,
-  pattern = "2023NDVI"
-)
-# altering this for the second run of files
-ndvi2 <- list.files(
-  "data/processed/ndvi_noWater",
-  full.names = TRUE,
-  pattern = "buffered10k_2.tif"
-)
-# drop the _2 from path names to get list of features to drop from group 1
-all_bgs_to_drop_from_ndvi1 <- gsub("_2\\.tif$", ".tif", ndvi2)
-# filter ndvi1
-ndvi1_to_keep <- ndvi1[!(ndvi1 %in% all_bgs_to_drop_from_ndvi1)]
-# bind the groups
-ndvi <- c(ndvi2, ndvi1_to_keep)
-# remove the duplicated values
-# (?<=noWater/) is a "lookbehind" that finds the text but doesn't include it
-# \\d+ matches one or more digits
-geoids <- str_extract(ndvi, "(?<=noWater/)\\d+")
-# elvaluate the duplicate dvalue
-dup <- ndvi[duplicated(geoids)]
-# exclude
-ndvi <- ndvi[!duplicated(geoids)]
+# [Keep your existing Step 1 and Step 2 code here for loading file lists]
 
+# --- NEW: Define Output Directory for Checkpoints ---
+checkpoint_dir <- "data/processed/summaryNDVI/city_checkpoints"
+dir.create(checkpoint_dir, showWarnings = FALSE, recursive = TRUE)
 
-# read in cenus tract all_bgs
-ct <- list.files("data/processed/censusGeographies", full.names = TRUE)
-
-# read in city layer
-cities <- sf::st_read("data/processed/top200/top200Cities.gpkg")
-# traspose to a list
-splitting_factor <- 1:nrow(cities)
-# Use split to create the list of single-row SpatVectors
-cityList <- terra::split(cities, f = splitting_factor)
-
-
-processNDVI <- function(city, ndviFiles, ct) {
-  # Get indexing values
-  name <- city$NAME
-  geoid <- city$GEOID
-  state <- city$State
-  # pull ndvi value
-  f1 <- ndviFiles[grepl(
-    pattern = paste0(geoid, "_"),
-    x = ndviFiles,
-    fixed = TRUE
-  )]
-
-  # grab the ct for the state
-  ct1 <- ct[grepl(pattern = paste0(state, "_ct.gpkg"), x = ct)] |>
-    sf::st_read() |>
-    dplyr::mutate(cityName = name, state = state, cityGEOID = geoid)
-  # Limit to the spatial boundies of the city buffered
-  # buffer city by 500 m
-  cityBuff <- terra::buffer(x = terra::vect(city), width = 500)
-
-  ct2 <- terra::vect(ct1)[cityBuff, ]
-  # read in NDVI values and
-  r1 <- rast(f1) |>
-    terra::crop(ct2)
-
-  # 1. Define your statistics function
-  #    (na.rm = TRUE is essential)
-  get_stats <- function(x) {
-    c(
-      mean = mean(x, na.rm = TRUE),
-      sd = sd(x, na.rm = TRUE),
-      totalCells = sum(!is.na(x))
-    )
+# 3. Define the processing function
+processNDVI_Hybrid <- function(city_index, cities, ndvi_list, tract_list, out_dir) {
+  
+  # Redirect terra's temp files to your project drive
+  temp_dir_path <- "data/processed/terra_temp"
+  dir.create(temp_dir_path, showWarnings = FALSE, recursive = TRUE)
+  terra::terraOptions(tempdir = temp_dir_path)
+  
+  # Extract the specific city row
+  city_row <- cities[city_index, ]
+  name <- city_row$NAME
+  geoid <- city_row$GEOID
+  state <- city_row$State
+  
+  # --- NEW: Checkpoint Logic ---
+  # Define what the output file for this city should be named
+  out_file <- file.path(out_dir, paste0("city_", geoid, "_ndvi.csv"))
+  
+  # If it already exists, skip processing entirely
+  if (file.exists(out_file)) {
+    return(NULL) 
   }
-  # 2. Run terra::extract()
-  zonal_stats <- terra::extract(
-    r1,
-    ct2,
-    fun = get_stats
-  ) |>
-    as.data.frame() |>
-    dplyr::select(
-      -ID
-    )
-  # rename layers for consistency
-  names(zonal_stats) <- c("meanNDVI", "standardDevNDVI", "totalCells")
-
-  # 3. Combine with polygon attributes
-  final_df <- cbind(
-    as.data.frame(ct2),
-    zonal_stats
-  )
-  return(final_df)
+  # -----------------------------
+  
+  # Find the NDVI raster for this specific city
+  f1 <- ndvi_list[grepl(pattern = paste0(geoid, "_"), x = ndvi_list, fixed = TRUE)]
+  
+  # Find the census tract file for the state
+  ct_file <- tract_list[grepl(pattern = paste0(state, "_ct.gpkg"), x = tract_list)]
+  
+  if (length(f1) == 1 && length(ct_file) == 1) {
+    
+    r1 <- terra::rast(f1)
+    ct_all <- sf::st_read(ct_file, quiet = TRUE) |> terra::vect()
+    city_vect <- terra::vect(city_row)
+    
+    cityBuff <- terra::buffer(x = city_vect, width = 500)
+    ct_city <- ct_all[cityBuff, ]
+    r1_crop <- terra::crop(r1, ct_city)
+    
+    results_list <- list()
+    
+    for (i in 1:nrow(ct_city)) {
+      tract <- ct_city[i, ]
+      tract_geoid <- tract$GEOID
+      
+      t_500 <- terra::buffer(x = tract, width = 500)
+      t_250 <- terra::buffer(x = tract, width = 250)
+      
+      r_500 <- terra::mask(x = r1_crop, mask = t_500)
+      r_250 <- terra::mask(x = r1_crop, mask = t_250)
+      
+      vals_500 <- terra::values(r_500)
+      mean_500 <- mean(vals_500, na.rm = TRUE)
+      sd_500 <- sd(vals_500, na.rm = TRUE)
+      cells_500 <- sum(!is.na(vals_500))
+      
+      vals_250 <- terra::values(r_250)
+      mean_250 <- mean(vals_250, na.rm = TRUE)
+      sd_250 <- sd(vals_250, na.rm = TRUE)
+      cells_250 <- sum(!is.na(vals_250))
+      
+      df <- data.frame(
+        geoid = tract_geoid,
+        cityName = name,
+        state = state,
+        cityGEOID = geoid,
+        totalCells_500m = cells_500,
+        meanNDVI_500m = mean_500,
+        standardDevNDVI_500m = sd_500,
+        totalCells_250m = cells_250,
+        meanNDVI_250m = mean_250,
+        standardDevNDVI_250m = sd_250
+      )
+      
+      results_list[[i]] <- df
+    }
+    
+    final_city_df <- dplyr::bind_rows(results_list)
+    
+    # --- NEW: Write to disk immediately instead of returning to RAM ---
+    readr::write_csv(final_city_df, out_file)
+    
+    # Aggressive Cleanup
+    terra::tmpFiles(remove = TRUE)
+    gc()
+    
+    # Return NULL so the parallel mapping doesn't hold data in memory
+    return(NULL)
+    
+  } else {
+    return(NULL) 
+  }
 }
 
-# test
-# miami was missing a lot of data
-city <- cities[cities$GEOID == 1245000, ]
-#bridgeport how too many char in geoid for censusblocks
-city <- cityList[[18]]
+# 4. Execute Parallel Processing
+plan(multisession, workers = 10) 
 
-t1 <- processNDVI(city = city, ndviFiles = ndvi, ct = ct)
-
-
-plan(multicore, workers = 10) # works but have to run from terminal.
-# plan(sequential)
-## not a super long run time but fast with multicore!
 tic()
-results <- future_map(
-  .x = cityList,
-  .f = processNDVI,
-  ndviFiles = ndvi,
-  ct = ct
+# future_map (not _dfr) because we are returning NULLs now, not dataframes
+future_map(
+  .x = 1:nrow(cities_sf),
+  .f = ~processNDVI_Hybrid(
+    city_index = .x, 
+    cities = cities_sf, 
+    ndvi_list = ndvi, 
+    tract_list = ct_files,
+    out_dir = checkpoint_dir # Pass the output directory
+  ),
+  .options = furrr_options(packages = c("sf", "terra", "dplyr", "readr")) 
 )
 toc()
-# 50 features sequential 9.5 sec
-# 50 features multicore 2.756 sec
 
-# bind results and export
-allData <- bind_rows(results)
+# 5. Assembly: Bind results and export the master file
+# Find all the individual city CSVs we just created
+all_city_files <- list.files(checkpoint_dir, full.names = TRUE, pattern = "\\.csv$")
+
+# Read them all and bind them into one master dataframe
+master_results <- purrr::map_dfr(all_city_files, readr::read_csv, show_col_types = FALSE)
+
 readr::write_csv(
-  allData,
+  master_results,
   "data/processed/summaryNDVI/allCensusTractsNDVI_2023.csv"
 )
-
-# eval
-t1 <- readr::read_csv("data/processed/summaryNDVI/allCensusTractsNDVI_2023.csv")
-# where were the errors
-## not quite errors, just locations that are being removed from the water mask
-
-t2 <- t1[is.na(t1$standardDevNDVI), ]
-
-## cities to rerender ndvi values
-reruns <- unique(t2$cityGEOID)
-# Use which() to get all row numbers that match
-positions <- which(cities$GEOID %in% reruns)
-
-print(positions)

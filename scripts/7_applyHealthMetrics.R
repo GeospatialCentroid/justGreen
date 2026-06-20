@@ -9,7 +9,7 @@ print("altering mortality for weighted values")
 
 
 print("city metrics")
-source("scripts/metricsToAllCities.R")
+# source("scripts/metricsToAllCities.R")
 
 # run on census tracts
 print("tracts metrics")
