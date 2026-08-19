@@ -558,8 +558,8 @@ This document is designed to be saved as a PDF using your browser. <ol style="ma
 
 
 <div class="footer-banner">
-  <img src="rojosLogo.png" height="80px">
+  <img src="assets/rojosLogo.png" height="80px">
   <span>Rojos Lab - Geospatial Centroid<br>Colorado State University © January 2026</span>
-  <img src="centroid_white_gray_logo_CROPPED.png" height="60px">
+  <img src="assets/centroid_white_gray_logo_CROPPED.png" height="60px">
 </div>
 
