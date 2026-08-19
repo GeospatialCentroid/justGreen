@@ -20,7 +20,8 @@ ctm <- read_csv("data/products/healthMeasures/allCT_2023_morDemStroke_with10perc
     popOver20_2023,
     popOver35_2023,
     popOver55_2023,
-    meanNDVI,
+    meanNDVI_500m,
+    meanNDVI_250m,
     RPL_THEMES,
     ls_Mortality_Rate,
     ls_Stroke_Rate,
@@ -41,7 +42,7 @@ ctm <- read_csv("data/products/healthMeasures/allCT_2023_morDemStroke_with10perc
       format(popOver20_2023, big.mark = ",", scientific = FALSE),
       "<br>",
       "Average NDVI: ",
-      round(meanNDVI, 2)
+      round(meanNDVI_500m, 2)
     )
     )
 
@@ -59,7 +60,7 @@ cities <- sf::st_read("data/processed/top200/top200Cities_vect.gpkg") |>
     State,
     fullCity,
     totalPopulation,
-    meanNDVI,
+    meanNDVI_500m,
     ls_Mortality_Rate,
     ls_Stroke_Rate,
     ls_Dementia_Rate
@@ -73,7 +74,7 @@ cities <- sf::st_read("data/processed/top200/top200Cities_vect.gpkg") |>
       format(totalPopulation, big.mark = ",", scientific = FALSE),
       "<br>",
       "Average NDVI: ",
-      round(meanNDVI, 2)
+      round(meanNDVI_500m, 2)
     ),
     ls_Mortality_Rate = abs(ls_Mortality_Rate),
     ls_Stroke_Rate = abs(ls_Stroke_Rate),
@@ -91,7 +92,7 @@ cityCentroid <- sf::st_centroid(cities) |>
       format(totalPopulation, big.mark = ",", scientific = FALSE),
       "<br>",
       "Average NDVI: ",
-      round(meanNDVI, 2)
+      round(meanNDVI_500m, 2)
     )
   )
 

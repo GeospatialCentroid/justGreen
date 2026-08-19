@@ -217,9 +217,9 @@ city_sf <- sf::st_as_sf(cS)
 
 ```{r process initial health measures , echo=FALSE, message=FALSE, warning=FALSE}
 # --- NDVI & Rankings ---
-cityNDVI <- round(cH$meanNDVI, 3)
+cityNDVI <- round(cH$meanNDVI_500m, 3)
 ndvi_sorted <- cityHealth |>
-  arrange(desc(meanNDVI)) |>
+  arrange(desc(meanNDVI_500m)) |>
   mutate(rank = row_number()) |>
   mutate(percentile = (1 - (rank / n())) * 100)
 
@@ -393,11 +393,11 @@ A 10% increase in NDVI can be achieved through combinations of native plant rest
 These census tracts have high population density and low vegetation—locations where added green space would benefit the most people.
 ```{r priority_map, echo=FALSE, message=FALSE, fig.height=5, fig.width=9}
 # Prepare Data
-ct_sf_clean <- ct_sf %>% filter(!is.na(meanNDVI), !is.na(popOver20_2023))
+ct_sf_clean <- ct_sf %>% filter(!is.na(meanNDVI_500m), !is.na(popOver20_2023))
 
 # Calculate Priority (Low NDVI * High Pop)
 ct_sf_clean <- ct_sf_clean %>%
-  mutate(priority_score = (1 - meanNDVI) * popOver20_2023) %>%
+  mutate(priority_score = (1 - meanNDVI_500m) * popOver20_2023) %>%
   arrange(desc(priority_score))
 
 top_5 <- head(ct_sf_clean, 5)
@@ -427,7 +427,7 @@ leaflet() %>%
       "<b>Census Tract:</b> ", GEOID, "<br>",
       "<hr style='margin: 5px 0;'>",
       "<b>Population (20+):</b> ", popOver20_2023, "<br>",
-      "<b>Greenness (NDVI):</b> ", round(meanNDVI, 3), "<br>",
+      "<b>Greenness (NDVI):</b> ", round(meanNDVI_500m, 3), "<br>",
       "<b>Lives Saved:</b> ", round(abs(ls_Mortality_Rate), 0), " <small>(per 100k)</small><br>",
       "<b>Strokes Prevented:</b> ", round(abs(ls_Stroke_Rate), 0), " <small>(per 100k)</small><br>",
       "<b>Dementia Prevented:</b> ", round(abs(ls_Dementia_Rate), 0), " <small>(per 100k)</small><br>",
@@ -469,9 +469,9 @@ leaflet() %>%
 ```{r priority_list, echo=FALSE}
 priority_table <- top_5 %>%
   sf::st_drop_geometry() %>%
-  select(GEOID, meanNDVI, popOver20_2023) %>% 
+  select(GEOID, meanNDVI_500m, popOver20_2023) %>% 
   mutate(Rank = 1:5, Area = "Neighborhood/Street") %>%
-  select(Rank, GEOID, Area, meanNDVI, popOver20_2023)
+  select(Rank, GEOID, Area, meanNDVI_500m, popOver20_2023)
 
 kable(priority_table, col.names = c("Rank", "Census Tract", "Area Description", "Current NDVI", "Population 20+")) %>%
   kable_styling(bootstrap_options = "striped", full_width = TRUE)
@@ -490,7 +490,7 @@ equity_summary <- ct_equity %>%
   group_by(svi_quartile) %>%
   summarise(
     Mean_SVI = mean(RPL_THEMES, na.rm=T),
-    Mean_NDVI = mean(meanNDVI, na.rm=T),
+    Mean_NDVI = mean(meanNDVI_500m, na.rm=T),
     # Fixed: "Lives Saved" and absolute values
     Lives_Saved = abs(mean(ls_Mortality_Rate, na.rm=T))
   ) %>%
