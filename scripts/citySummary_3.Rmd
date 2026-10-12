@@ -417,7 +417,7 @@ pal_ndvi <- colorNumeric("YlOrRd", domain = ct_sf_clean$priority_score)
 leaflet() %>%
   addMapPane("borders", zIndex = 410) %>%
   # Base Groups
-  addProviderTiles(providers$CartoDB.Positron, group = "Simple Map") %>%
+  addProviderTiles(providers$Esri.WorldGrayCanvas, group = "Simple Map") %>%
   addProviderTiles(providers$Esri.WorldImagery, group = "Satellite") %>%
   
   # Census Tracts (Current Vegetation)
